@@ -1,0 +1,25 @@
+services:
+  redis_insight:
+    image: redislabs/redisinsight:latest
+    restart: always
+    ports:
+      - "50030:5540"
+    networks:
+      - agent_platform_network
+
+  redis:
+    image: redis:latest
+    restart: always
+    command: redis-server --maxmemory 50GB --maxmemory-policy allkeys-lru --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - agent_platform_network
+
+networks:
+  agent_platform_network:
+    name: agent_platform_network

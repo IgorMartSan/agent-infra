@@ -1,0 +1,36 @@
+services:
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    depends_on:
+      - phoenix-db
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    environment:
+      - PHOENIX_SQL_DATABASE_URL=postgresql://postgres:postgres@phoenix-db:5432/postgres
+      - PHOENIX_DEFAULT_RETENTION_POLICY_DAYS=3
+      - PHOENIX_ALLOW_EXTERNAL_RESOURCES=false
+    restart: unless-stopped
+    networks:
+      - ai_shop_assistant_network
+
+  phoenix-db:
+    image: postgres:16
+    container_name: phoenix-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - phoenix_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - ai_shop_assistant_network
+
+networks:
+  ai_shop_assistant_network:
+    name: ai_shop_assistant_network
+
+volumes:
+  phoenix_postgres_data:

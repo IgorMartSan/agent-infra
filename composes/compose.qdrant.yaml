@@ -1,0 +1,38 @@
+services:
+  py-qdrant-api:
+    build:
+      context: ..
+      dockerfile: services/apis/py-qdrant-api/dockerfile
+    container_name: py-qdrant-api
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: documents
+      VECTOR_SIZE: 768
+      EMBEDDING_MODEL: embeddinggemma:latest
+      EMBEDDING_BASE_URL: http://10.247.168.43:11434
+      EMBEDDING_WARMUP_TEXT: startup warmup
+    depends_on:
+      - qdrant
+    networks:
+      - agent_platform_network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "16333:6333"
+      - "16334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - agent_platform_network
+
+networks:
+  agent_platform_network:
+    name: agent_platform_network
+
+volumes:
+  qdrant_storage:

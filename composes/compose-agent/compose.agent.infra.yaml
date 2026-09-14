@@ -1,0 +1,51 @@
+
+
+services:
+  bge_m3:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    # image: ghcr.io/huggingface/text-embeddings-inference:1.9
+    container_name: bge_m3
+    ports:
+      - "8080:80"
+    volumes:
+      - ../volumes/bge_m3:/data
+    command:
+      - --model-id
+      - BAAI/bge-m3
+    gpus: all
+    restart: unless-stopped
+    networks:
+      - ai_shop_assistant_network
+
+  postgres-vector:
+    image: pgvector/pgvector:pg17
+    container_name: postgres-vector
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "50001:5432"
+    volumes:
+      - postgres-vector-data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "50002:80"
+    networks:
+      - ai_shop_assistant_network
+
+
+
+
+networks:
+  ai_shop_assistant_network:
+    name: ai_shop_assistant_network
+
+volumes:
+  postgres-vector-data:

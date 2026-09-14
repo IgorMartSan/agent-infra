@@ -1,0 +1,6 @@
+# Arquivo legado.
+# A infraestrutura foi separada em:
+# - composes/compose.phoenix.yaml
+# - composes/compose.postgres.yaml
+# - composes/compose.redis.yaml
+# - composes/compose.qdrant.yaml

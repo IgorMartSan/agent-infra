@@ -1,0 +1,11 @@
+include:
+  - composes/compose.postgres.yaml
+  - composes/compose.redis.yaml
+  - composes/compose.rabbitmq.yaml
+  - composes/compose.qdrant.yaml
+  - composes/compose.services.yaml
+
+  
+networks:
+  agent_platform_network:
+    name: agent_platform_network

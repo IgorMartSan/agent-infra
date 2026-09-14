@@ -1,0 +1,139 @@
+services:
+
+# Não funciona com rtx 1060
+  # qwen-vllm:
+  #   image: vllm/vllm-openai:latest
+  #   container_name: qwen3_5_4b_vllm
+  #   ports:
+  #     - "50010:8000"
+  #   volumes:
+  #     - ${PATH_VOLUMES}/models/qwen3_5_4b_vllm/hf-cache:/root/.cache/huggingface
+  #   environment:
+  #     - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #     - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+  #   command: >
+  #     Qwen/Qwen3.5-4B
+  #     --host 0.0.0.0
+  #     --port 8000
+  #     --dtype auto
+  #     --gpu-memory-utilization 0.90
+  #     --max-model-len 8192
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   networks:
+  #     - ai_shop_assistant_network
+
+
+
+# Equivalente mais proximo de 2B na familia Qwen3
+  qwen-vllm-2b:
+    image: vllm/vllm-openai:latest
+    container_name: qwen3_1_7b_vllm
+    ports:
+      - "50011:8000"
+    volumes:
+      - ${PATH_VOLUMES}/models/qwen3_1_7b_vllm/hf-cache:/root/.cache/huggingface
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    command: >
+      Qwen/Qwen3-1.7B
+      --host 0.0.0.0
+      --port 8000
+      --dtype auto
+      --gpu-memory-utilization 0.90
+      --max-model-len 8192
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - ai_shop_assistant_network
+
+
+
+  bge_m3:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    # image: ghcr.io/huggingface/text-embeddings-inference:1.9
+    container_name: bge_m3
+    ports:
+      - "8080:80"
+    volumes:
+      - ../volumes/bge_m3:/data
+    command:
+      - --model-id
+      - BAAI/bge-m3
+    gpus: all
+    restart: unless-stopped
+    networks:
+      - ai_shop_assistant_network
+
+
+
+# ollama:
+#   image: ollama/ollama
+#   container_name: ollama
+#   ports:
+#     - "11434:11434"
+#   volumes:
+#     - ${PATH_VOLUMES}/models/ollama-data:/root/.ollama
+#   restart: unless-stopped
+
+#   gpus: all
+
+#   environment:
+#     - NVIDIA_VISIBLE_DEVICES=all
+#     - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+#     - OLLAMA_NUM_GPU=999
+
+#   entrypoint: >
+#     sh -c "ollama serve & sleep 10 && ollama run mistral:7b && tail -f /dev/null"
+
+#   networks:
+#     - ai_shop_assistant_network
+
+
+
+#   ollama:
+#     image: ollama/ollama
+#     container_name: ollama
+#     ports:
+#       - "11434:11434"
+#     volumes:
+#       - ${PATH_VOLUMES}/models/ollama-data:/root/.ollama
+#     restart: unless-stopped
+#     # entrypoint: sh -c "ollama serve & sleep 10 && ollama run deepseek-r1:1.5b && tail -f /dev/null"
+#     entrypoint: sh -c "ollama serve & sleep 10 && ollama run llama3.2:1b && tail -f /dev/null"
+#     #entrypoint: sh -c "ollama serve & sleep 10 && ollama run mistral:7b && tail -f /dev/null"
+#     #entrypoint: sh -c "ollama serve & sleep 10 && ollama run deepseek-r1:7b && tail -f /dev/null"
+#     deploy:
+#       resources:
+#         reservations:
+#           devices:
+#             - capabilities: [gpu]  # remova se for usar CPU
+
+
+#     environment:
+#       - NVIDIA_VISIBLE_DEVICES="GPU 0"
+#       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+#       - OLLAMA_NUM_GPU=999
+
+
+#     networks:
+#       - ai_shop_assistant_network
+
+
+
+# networks:
+#   ai_shop_assistant_network:
+#     name: ai_shop_assistant_network

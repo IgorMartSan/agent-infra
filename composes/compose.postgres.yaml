@@ -1,0 +1,31 @@
+services:
+  postgres-vector:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres_vector
+      POSTGRES_PASSWORD: automate123
+      POSTGRES_DB: postgres_vector_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_vector_data:/var/lib/postgresql/data
+    networks:
+      - agent_platform_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5434:80"
+    networks:
+      - agent_platform_network
+
+networks:
+  agent_platform_network:
+    name: agent_platform_network
+
+volumes:
+  postgres_vector_data:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "FastAPI Pragmatic Layered"
+  short_description: "Build simple, maintainable layered FastAPI services"
+  default_prompt: "Use $fastapi-pragmatic-layered to create a FastAPI service with only the layers and integrations this project needs."

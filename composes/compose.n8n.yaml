@@ -1,0 +1,137 @@
+
+services:
+#50000-50030
+  redis_n8n:
+    image: redis:7-alpine
+    ports:
+      - "50011:6379"
+    volumes:
+      - redis_n8n_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - ai_shop_assistant_network
+
+  postgres_n8n:
+    image: postgres:15.2-alpine
+    restart: always
+    ports:
+      - "50012:5432"
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: n8n_db
+      TZ: America/Sao_Paulo
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command: postgres -c listen_addresses='*'
+    volumes:
+      - postgres_n8n_data:/var/lib/postgresql/data
+      - postgres_n8n_init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - ai_shop_assistant_network
+
+  postgres_test_n8n:
+    image: postgres:15.2-alpine
+    restart: always
+    ports:
+      - "50013:5432"
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: n8n_db
+      TZ: America/Sao_Paulo
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command: postgres -c listen_addresses='*'
+    volumes:
+      - postgres_test_n8n_data:/var/lib/postgresql/data
+      - postgres_n8n_init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - ai_shop_assistant_network
+
+  pgadmin_n8n:
+    image: dpage/pgadmin4:9.3
+    restart: always
+    user: "0:0"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@n8n.localhost.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "False"
+    ports:
+      - "50014:80"
+    depends_on:
+      - postgres_n8n
+      - postgres_test_n8n
+    volumes:
+      - pgadmin_n8n_data:/var/lib/pgadmin
+    networks:
+      - ai_shop_assistant_network
+
+
+
+  # waha:    
+  #   image: devlikeapro/waha
+  #   platform: linux/amd64    
+  #   environment:      
+  #      #WHATSAPP_HOOK_URL: http://n8n:5678/webhook-test/webhook  
+  #      WHATSAPP_HOOK_URL: http://n8n:5678/webhook/webhook  
+  #      WAHA_DASHBOARD_ENABLED: "true"
+  #      WAHA_DASHBOARD_NO_PASSWORD: "true"
+  #      WAHA_PRINT_QR: false 
+  #      #WHATSAPP_HOOK_URL: http://host.docker.internal:50001/webhook-test/webhook
+  #      #WHATSAPP_HOOK_URL: http://host.docker.internal:50001/webhook/webhook
+  #      #WHATSAPP_DEFAULT_ENGINE: GOWS      
+  #      WHATSAPP_HOOK_EVENTS: message
+  #      WHATSAPP_START_SESSION: default    
+  #      WAHA_API_KEY: "2e1005a40ef74edda01ffb1ade877fd3"
+  #   volumes:      
+  #        - waha_sessions:/app/.sessions
+  #        - waha_media:/app/.media
+  #   ports:      
+  #     - "50002:3000"
+  #   networks:
+  #     - ai_shop_assistant_network
+
+  n8n:
+    image: n8nio/n8n:1.123.37
+    restart: always
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres_n8n
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n_db
+      DB_POSTGRESDB_USER: n8n_user
+      DB_POSTGRESDB_PASSWORD: postgres123
+      N8N_BASIC_AUTH_ACTIVE: true
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: admin123
+      N8N_SECURE_COOKIE: false
+      N8N_HOST: n8n.local
+      N8N_PORT: 5678
+      #WEBHOOK_URL: http://host.docker.internal:50001
+      WEBHOOK_URL: http://n8n:5678
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
+
+    ports:
+      - "50003:5678"
+    depends_on:
+      - postgres_n8n
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - n8n_files:/files
+    networks:
+      - ai_shop_assistant_network
+
+
+volumes:
+  redis_n8n_data:
+  postgres_n8n_data:
+  postgres_test_n8n_data:
+  postgres_n8n_init:
+  pgadmin_n8n_data:
+  n8n_data:
+  n8n_files:
+  waha_sessions:
+  waha_media:
+
+networks:
+  ai_shop_assistant_network:
+    name: ai_shop_assistant_network
