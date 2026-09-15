@@ -1,5 +1,6 @@
 import json
 
+import pika
 import pytest
 
 from infra.rabbitmq.producer import RabbitMQProducer
@@ -22,6 +23,10 @@ class FakeChannel:
 class FakeConnection:
     def __init__(self, channel: FakeChannel):
         self.channel = channel
+        self.close_calls = 0
+
+    def close(self) -> None:
+        self.close_calls += 1
 
 
 def test_publish_uses_durable_exchange_persistent_message_and_routing_key() -> None:
@@ -56,3 +61,33 @@ def test_publish_fails_when_rabbitmq_does_not_confirm() -> None:
             routing_key='agent.simple',
             message={'message_id': 'message-1'},
         )
+
+
+def test_publish_reconnects_once_after_stale_connection() -> None:
+    healthy_channel = FakeChannel()
+
+    class RecoveringConnection(FakeConnection):
+        attempts = 0
+
+        @property
+        def channel(self):
+            self.attempts += 1
+            if self.attempts == 1:
+                raise pika.exceptions.StreamLostError('stale connection')
+            return healthy_channel
+
+        @channel.setter
+        def channel(self, value: FakeChannel) -> None:
+            self._channel = value
+
+    connection = RecoveringConnection(healthy_channel)
+    producer = RabbitMQProducer(connection)
+
+    producer.publish(
+        exchange='agent.requests',
+        routing_key='agent.gemma4',
+        message={'message_id': 'message-1'},
+    )
+
+    assert connection.close_calls == 1
+    assert healthy_channel.publication['routing_key'] == 'agent.gemma4'

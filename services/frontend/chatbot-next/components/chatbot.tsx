@@ -34,7 +34,7 @@ import type { Message } from "@/types/chat"
 
 const defaultApplicationId = "chatbot-next"
 const defaultUserId = "user-1"
-const defaultAgentId = "simple-agent"
+const defaultAgentId = "gemma4-agent"
 
 const suggestions = [
   "Olá! Quem é você?",
@@ -371,6 +371,7 @@ export function Chatbot() {
                 list="available-agents"
               />
               <datalist id="available-agents">
+                <option value="gemma4-agent" />
                 <option value="simple-agent" />
               </datalist>
             </div>

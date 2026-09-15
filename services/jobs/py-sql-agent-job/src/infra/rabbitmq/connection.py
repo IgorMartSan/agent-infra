@@ -21,17 +21,17 @@ class RabbitMQConnection:
             return
 
         credentials = pika.PlainCredentials(
-            os.getenv('RABBITMQ_USER') or 'admin',
-            os.getenv('RABBITMQ_PASSWORD') or 'admin123',
+            os.environ["RABBITMQ_USER"],
+            os.environ["RABBITMQ_PASSWORD"],
         )
         parameters = pika.ConnectionParameters(
-            host=os.getenv('RABBITMQ_HOST', 'localhost'),
-            port=int(os.getenv('RABBITMQ_PORT', '5672')),
-            virtual_host=os.getenv('RABBITMQ_VHOST') or '/',
+            host=os.environ["RABBITMQ_HOST"],
+            port=int(os.environ["RABBITMQ_PORT"]),
+            virtual_host=os.environ["RABBITMQ_VHOST"],
             credentials=credentials,
-            connection_attempts=int(os.getenv('RABBITMQ_CONNECTION_ATTEMPTS', '1')),
-            retry_delay=float(os.getenv('RABBITMQ_RETRY_DELAY', '1')),
-            socket_timeout=float(os.getenv('RABBITMQ_SOCKET_TIMEOUT', '5')),
+            connection_attempts=int(os.environ["RABBITMQ_CONNECTION_ATTEMPTS"]),
+            retry_delay=float(os.environ["RABBITMQ_RETRY_DELAY"]),
+            socket_timeout=float(os.environ["RABBITMQ_SOCKET_TIMEOUT"]),
             blocked_connection_timeout=5,
         )
 
@@ -42,20 +42,17 @@ class RabbitMQConnection:
 
     @property
     def channel(self):
-        if not self._connection or self._connection.is_closed:
+        if not self._connection or self._connection.is_closed or not self._channel or self._channel.is_closed:
             self.connect()
 
         return self._channel
 
     def close(self):
-        try:
-            if self._connection and self._connection.is_open:
-                self._connection.close()
-        except (pika.exceptions.AMQPError, OSError):
-            pass
-        finally:
-            self._connection = None
-            self._channel = None
+        if self._connection and self._connection.is_open:
+            self._connection.close()
+
+        self._connection = None
+        self._channel = None
 
 
 rabbitmq = RabbitMQConnection()

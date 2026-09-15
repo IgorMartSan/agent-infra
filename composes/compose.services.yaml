@@ -37,6 +37,48 @@ services:
     networks:
       - agent_platform_network
 
+  worker-gemma4-agent:
+    build:
+      context: ..
+      dockerfile: services/jobs/py-gemma4-agent-job/Dockerfile
+    container_name: worker-gemma4-agent
+    restart: unless-stopped
+    environment:
+      AGENT_ID: gemma4-agent
+      LOG_LEVEL: INFO
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: admin
+      RABBITMQ_PASSWORD: admin123
+      RABBITMQ_VHOST: /
+      RABBITMQ_EXCHANGE: agent.requests
+      RABBITMQ_QUEUE: agent.gemma4.requests
+      RABBITMQ_ROUTING_KEY: agent.gemma4
+      RABBITMQ_PREFETCH_COUNT: 1
+      RABBITMQ_CONNECTION_ATTEMPTS: 1
+      RABBITMQ_RETRY_DELAY: 1
+      RABBITMQ_SOCKET_TIMEOUT: 5
+      RABBITMQ_RECONNECT_DELAY: 3
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PASSWORD: ""
+      REDIS_RESPONSE_CHANNEL_PREFIX: chat:response
+      OPENAI_BASE_URL: http://10.247.168.43:8072/v1
+      OPENAI_API_KEY: EMPTY
+      OPENAI_MODEL: gemma4
+      OPENAI_TEMPERATURE: 0.2
+      OPENAI_MAX_TOKENS: 1024
+      OPENAI_TIMEOUT_SECONDS: 120
+      OPENAI_MAX_RETRIES: 2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agent_platform_network
+
   chatbot-next:
     build:
       context: ..
