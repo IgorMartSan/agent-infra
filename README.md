@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Agent Platform
 
 Plataforma centralizada para receber mensagens de diferentes aplicações, processá-las com agentes de IA e devolver as respostas para o canal correto.
@@ -1312,113 +1311,114 @@ HTTP Callback
 Quando esse fluxo estiver confiável, substituir o `EchoAgent` pelo primeiro agente real.
 
 Isso permite validar primeiro a infraestrutura de mensageria, persistência e entrega antes de adicionar a complexidade do modelo de IA.
-=======
-# agent_module_with_redis
+---
 
-Projeto de mensageria e processamento de chat com fluxo simplificado usando Redis.
+# 26. Como testar o fluxo completo
 
-## Arquitetura
-
-A arquitetura atual tem três blocos principais:
-
-- `py-message-publisher-api`
-  Recebe a mensagem HTTP e grava a mensagem no buffer do Redis.
-
-- `Redis`
-  Funciona como buffer temporário por `chat_id`, índice de chats prontos para processamento e canal Pub/Sub para entrega de respostas.
-
-- `py-message-agent-job`
-  Lê os lotes prontos no Redis, gera uma resposta simples e publica essa resposta no Pub/Sub.
-
-## Fluxo da Mensagem
-
-1. O cliente envia `POST /messages/{user_id}` para a `py-message-publisher-api`.
-2. A API aplica rate limit básico por usuário.
-3. A mensagem é adicionada no Redis em `chat:buffer:{user_id}`.
-4. O `py-message-agent-job` consulta o índice `chat:ready_index` e coleta chats que ficaram ociosos pelo tempo configurado.
-5. O job trava o processamento daquele `chat_id` com um lock temporário no Redis para evitar concorrência dupla.
-6. O job lê as mensagens do lote e monta a resposta final.
-7. O job publica a resposta no canal `chat:response:{chat_id}` usando Redis Pub/Sub.
-8. O job confirma no Redis que as mensagens do lote podem ser removidas do buffer.
-
-## Componentes
-
-### `services/apis/py-message-publisher-api`
-
-Responsabilidade:
-- receber mensagens via HTTP
-- validar payload
-- aplicar rate limit simples
-- gravar no Redis
-
-Endpoint principal:
-- `POST /messages/{user_id}`
-
-### `services/jobs/py-message-agent-job`
-
-Responsabilidade:
-- buscar lotes prontos no Redis
-- gerar resposta final simples
-- publicar no Pub/Sub
-- remover do buffer após confirmação
-
-### `packages/infra/src/infra/redis`
-
-Responsabilidade:
-- abrir conexão Redis
-- escrever e ler mensagens do buffer
-- controlar lock de processamento
-- publicar respostas em canais Pub/Sub
-
-Chaves Redis usadas:
-- `chat:buffer:{user_id}`
-- `chat:ready_index`
-- `chat:processing:{user_id}`
-- `chat:response:{chat_id}`
-- `chat:block:{user_id}`
-- `chat:rate:{user_id}`
-
-## Estrutura Resumida
+O fluxo implementado atualmente é:
 
 ```text
-Cliente HTTP
-  -> py-message-publisher-api
-  -> Redis buffer
-  -> py-message-agent-job
-  -> Redis Pub/Sub
-  -> Cliente consumidor da resposta
+Chat CLI
+  -> Agent API (FastAPI, porta 8000)
+  -> RabbitMQ (exchange agent.requests, routing key agent.simple)
+  -> Worker (LangGraph)
+  -> Redis Pub/Sub (canal chat:response:{application_id}:{chat_id})
+  -> Chat CLI exibe a resposta
 ```
 
-## Observações
+## Subir a infraestrutura com Docker Compose
 
-- O fluxo com RabbitMQ foi removido do stack principal.
-- O processamento atual é propositalmente simples: a resposta final é montada a partir da última mensagem do lote.
-- O Redis virou o meio de entrada, coordenação e entrega em tempo real.
-- O PostgreSQL pode ser reutilizado no futuro pelo LangGraph, mas não participa do fluxo atual.
-
-## Subida do Projeto
-
-Exemplo com Docker Compose:
+Na raiz do projeto:
 
 ```bash
-docker compose -f docker-compose.yml up --build
+docker compose -p agent_module_with_redis \
+  -f composes/compose.rabbitmq.yaml \
+  -f composes/compose.redis.yaml \
+  -f composes/compose.postgres.yaml \
+  -f composes/compose.services.yaml \
+  up -d rabbitmq redis postgres-vector py-agent-gateway-api worker-agent
 ```
 
-Serviços principais no stack atual:
-- `py-message-publisher-api`
-- `worker-agent`
-- `redis`
-- `worker-message-simulator`
+Portas expostas no host:
 
-## Desenvolvimento
+| Porta | Serviço |
+|-------|---------|
+| 8000 | Agent API (Swagger em `/docs`) |
+| 5673 | RabbitMQ (AMQP; management UI em 15673, usuário `admin` / senha `admin123`) |
+| 6380 | Redis |
+| 5433 | PostgreSQL |
 
-Com `uv`:
+> As portas 5673/6380 evitam conflito com outros stacks que usem as portas padrão 5672/6379.
+
+Se o código do worker ou da API mudar, rebuild antes:
 
 ```bash
+docker compose -p agent_module_with_redis \
+  -f composes/compose.rabbitmq.yaml \
+  -f composes/compose.redis.yaml \
+  -f composes/compose.postgres.yaml \
+  -f composes/compose.services.yaml \
+  build worker-agent py-agent-gateway-api
+```
+
+## Rodar o chat CLI
+
+O chat publica a mensagem via API, fica travado esperando a resposta no Redis Pub/Sub e exibe quando chegar.
+
+```bash
+cd services/jobs/py-simple-agent-job
+REDIS_PORT=6380 .venv/Scripts/python.exe chat.py
+```
+
+(Linux/macOS: `REDIS_PORT=6380 .venv/bin/python chat.py`)
+
+Exemplo de sessão:
+
+```text
+voce > olá, tudo bem?
+aguardando resposta...
+agente > Eu sou o Simple Agent. ... Eu recebi a mensagem: olá, tudo bem?
+```
+
+## Testar a API manualmente (sem chat)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "application_id": "test-app",
+    "chat_id": "chat-1",
+    "agent_id": "simple-agent",
+    "message": "Verifique o status do chamado 900."
+  }'
+```
+
+Resposta esperada:
+
+```json
+{
+  "message_id": "9d5fc9b0-1208-43fa-8f60-ec43e7db74b1",
+  "status": "ACCEPTED"
+}
+```
+
+Para ver a resposta do agente fora do chat CLI, assine o canal correspondente:
+
+```bash
+docker exec -it agent_module_with_redis-redis-1 redis-cli SUBSCRIBE "chat:response:test-app:chat-1"
+```
+
+## Desenvolvimento local (sem Docker)
+
+```bash
+cd services/jobs/py-simple-agent-job
 uv sync
-uv run python main.py
+RABBITMQ_HOST=localhost RABBITMQ_USER=admin RABBITMQ_PASSWORD=admin123 \
+RABBITMQ_PORT=5673 uv run python src/main.py
 ```
 
-Não é obrigatório rodar `uv sync` antes de tudo; `uv run` pode instalar dependências quando necessário.
->>>>>>> bfddf0469e1d3815b237ef78d1a4f8ed25e42602
-"# agent-infra" 
+Documentação detalhada de cada serviço nos respectivos `README.md`:
+
+- `services/apis/py-agent-gateway-api/README.md`
+- `services/jobs/py-simple-agent-job/README.md`
+- `services/jobs/py-message-delivery/README.md` 

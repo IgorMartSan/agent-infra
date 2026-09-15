@@ -9,6 +9,12 @@ services:
       - "8000:8000"
     env_file:
       - ../services/apis/py-agent-gateway-api/.env
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: admin
+      RABBITMQ_PASSWORD: admin123
+      RABBITMQ_VHOST: /
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -20,71 +26,14 @@ services:
       context: ..
       dockerfile: services/jobs/py-simple-agent-job/Dockerfile
     restart: unless-stopped
-    environment:
-      AGENT_ID: simple-agent
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: admin
-      RABBITMQ_PASSWORD: admin123
-      RABBITMQ_VHOST: /
-      RABBITMQ_EXCHANGE: agent.requests
-      RABBITMQ_QUEUE: agent.simple.requests
-      RABBITMQ_ROUTING_KEY: agent.simple
-      RABBITMQ_PREFETCH_COUNT: 1
-      POSTGRES_HOST: postgres-vector
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres_vector
-      POSTGRES_PASSWORD: automate123
-      POSTGRES_DB: postgres_vector_db
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      REDIS_RESPONSE_CHANNEL_PREFIX: chat:response
-      MESSAGE_AGENT_DEFAULT_ID: ${MESSAGE_AGENT_DEFAULT_ID:-agent1}
-      AGENT_POLL_INTERVAL_SECONDS: 5
-      AGENT_BATCH_IDLE_SECONDS: 10
-      AGENT_MAX_MESSAGES_PER_GROUP: 10
-      AGENT_LOCK_TTL_SECONDS: 60
-      AGENT_MAX_ATTEMPTS: 3
-
-      SHOW_LOG: "true"
-      LOG_ERROR_MODE: full
-
-      LLM_MODEL: "gemma4:latest"
-      LLM_MODEL_PROVIDER: "ollama"
-      BASE_URL: "http://10.247.168.43:11434"
-
-      EMBEDDING_MODEL: "embeddinggemma:latest"
-      EMBEDDING_MODEL_PROVIDER: "ollama"
-      EMBEDDING_BASE_URL: "http://10.247.168.43:11434"
+    env_file:
+      - ../services/jobs/py-simple-agent-job/.env
 
     depends_on:
       rabbitmq:
         condition: service_healthy
-      postgres-vector:
-        condition: service_started
       redis:
         condition: service_healthy
-    networks:
-      - agent_platform_network
-
-  worker-message-simulator:
-    build:
-      context: ..
-      dockerfile: services/jobs/py-message-simulator-job/Dockerfile
-    restart: unless-stopped
-    environment:
-      SIMULATOR_PUBLISHER_API_URL: http://py-agent-gateway-api:8000/api/v1/messages
-      SIMULATOR_APPLICATION_ID: message-simulator
-      SIMULATOR_USER_ID: usuario_teste
-      SIMULATOR_CHAT_ID: chat-simulator-1
-      SIMULATOR_AGENT_ID: simple-agent
-      SIMULATOR_SHORT_DELAY_SECONDS: 5
-      SIMULATOR_LONG_DELAY_SECONDS: 15
-      SHOW_LOG: "true"
-      LOG_ERROR_MODE: full
-    depends_on:
-      - py-agent-gateway-api
     networks:
       - agent_platform_network
 

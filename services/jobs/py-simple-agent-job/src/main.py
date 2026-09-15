@@ -12,23 +12,23 @@ from processor import InvalidMessageError, process_agent_message
 load_dotenv()
 
 logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    level=os.environ["LOG_LEVEL"].upper(),
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    agent_id = os.getenv("AGENT_ID", "simple-agent")
-    exchange = os.getenv("RABBITMQ_EXCHANGE", "agent.requests")
-    queue = os.getenv("RABBITMQ_QUEUE", "agent.simple.requests")
-    routing_key = os.getenv("RABBITMQ_ROUTING_KEY", "agent.simple")
-    prefetch_count = int(os.getenv("RABBITMQ_PREFETCH_COUNT", "1"))
-    reconnect_delay = float(os.getenv("RABBITMQ_RECONNECT_DELAY", "3"))
+    agent_id = os.environ["AGENT_ID"]
+    exchange = os.environ["RABBITMQ_EXCHANGE"]
+    queue = os.environ["RABBITMQ_QUEUE"]
+    routing_key = os.environ["RABBITMQ_ROUTING_KEY"]
+    prefetch_count = int(os.environ["RABBITMQ_PREFETCH_COUNT"])
+    reconnect_delay = float(os.environ["RABBITMQ_RECONNECT_DELAY"])
     redis_connection = RedisConnection()
     response_pubsub = AgentResponsePubSubRepository(
         redis_connection,
-        channel_prefix=os.getenv("REDIS_RESPONSE_CHANNEL_PREFIX", "chat:response"),
+        channel_prefix=os.environ["REDIS_RESPONSE_CHANNEL_PREFIX"],
     )
 
     try:

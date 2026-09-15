@@ -13,7 +13,7 @@ ENV NEXT_PUBLIC_CHAT_WS_URL=$NEXT_PUBLIC_CHAT_WS_URL
 COPY services/frontend/chatbot-next/package.json ./package.json
 COPY services/frontend/chatbot-next/package-lock.json ./package-lock.json
 
-RUN npm install
+RUN npm ci --include=dev
 
 COPY services/frontend/chatbot-next/ ./
 

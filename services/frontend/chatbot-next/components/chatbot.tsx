@@ -1,307 +1,529 @@
 "use client"
 
-import { type FormEvent, useEffect, useRef, useState } from "react"
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
+import {
+  Bot,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  LoaderCircle,
+  MessageSquarePlus,
+  Send,
+  Settings2,
+  UserRound,
+} from "lucide-react"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
 import type { Message } from "@/types/chat"
 
-const defaultApiBaseUrl = "http://192.168.15.15:8000"
-const apiBaseUrl = process.env.NEXT_PUBLIC_CHAT_SEND_URL ?? defaultApiBaseUrl
+const defaultApplicationId = "chatbot-next"
 const defaultUserId = "user-1"
-const defaultChatId = "chat-1"
-const defaultAgentId = "agent1"
+const defaultAgentId = "simple-agent"
+
+const suggestions = [
+  "Olá! Quem é você?",
+  "Explique como este agente funciona.",
+  "Faça um resumo desta conversa.",
+]
 
 function createId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID()
   }
 
   return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function createChatId() {
+  return `chat-${Date.now().toString(36)}`
+}
+
+function currentTime() {
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date())
+}
+
+type ApiStatus = "checking" | "online" | "offline"
+
 export function Chatbot() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const receivedMessageIdsRef = useRef(new Set<string>())
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "Ola! Envie uma mensagem para iniciar a conversa.",
+      content:
+        "Olá! Este é o playground do agente. Envie uma mensagem para testar o fluxo completo.",
     },
   ])
   const [input, setInput] = useState("")
+  const [applicationId, setApplicationId] = useState(defaultApplicationId)
   const [userId, setUserId] = useState(defaultUserId)
-  const [chatId, setChatId] = useState(defaultChatId)
+  const [chatId, setChatId] = useState("chat-1")
   const [agentId, setAgentId] = useState(defaultAgentId)
   const [isSending, setIsSending] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("checking")
+  const [streamConnected, setStreamConnected] = useState(false)
 
   useEffect(() => {
-    if (!apiBaseUrl) {
-      return
+    const controller = new AbortController()
+
+    async function checkApi() {
+      try {
+        const response = await fetch("/api/chat", {
+          cache: "no-store",
+          signal: controller.signal,
+        })
+        setApiStatus(response.ok ? "online" : "offline")
+      } catch {
+        if (!controller.signal.aborted) setApiStatus("offline")
+      }
     }
 
-    const selectedUserId = userId.trim() || defaultUserId
-    const selectedChatId = chatId.trim() || defaultChatId
-    const streamUrl = `${apiBaseUrl}/users/${encodeURIComponent(selectedUserId)}/chats/${encodeURIComponent(selectedChatId)}/stream`
-    const eventSource = new EventSource(streamUrl)
+    void checkApi()
+    return () => controller.abort()
+  }, [])
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, isSending])
+
+  useEffect(() => {
+    const selectedApplicationId = applicationId.trim() || defaultApplicationId
+    const selectedChatId = chatId.trim() || "chat-1"
+    const params = new URLSearchParams({
+      application_id: selectedApplicationId,
+      chat_id: selectedChatId,
+    })
+    const eventSource = new EventSource(`/api/chat/stream?${params}`)
+
+    eventSource.onopen = () => setStreamConnected(true)
+    eventSource.onerror = () => setStreamConnected(false)
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as {
-          user_id?: string
-          chat_id?: string
+          type?: string
+          application_id?: string
+          conversation_id?: string
+          message_id?: string
+          content?: string
           response?: string
         }
+        const content = data.content ?? data.response
 
+        if (!content?.trim()) return
         if (
-          data.user_id !== selectedUserId ||
-          data.chat_id !== selectedChatId ||
-          typeof data.response !== "string" ||
-          !data.response.trim()
+          data.message_id &&
+          receivedMessageIdsRef.current.has(data.message_id)
         ) {
           return
         }
-
-        const response = data.response
+        if (data.message_id) receivedMessageIdsRef.current.add(data.message_id)
 
         setMessages((current) => [
           ...current,
           {
-            id: createId(),
+            id: data.message_id || createId(),
             role: "assistant",
-            content: response,
+            content,
+            createdAt: currentTime(),
           },
         ])
       } catch {
-        return
+        // Ignora eventos que não seguem o contrato de resposta do agente.
       }
     }
 
-    return () => {
-      eventSource.close()
-    }
-  }, [chatId, userId])
+    return () => eventSource.close()
+  }, [applicationId, chatId])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const content = input.trim()
+  async function sendMessage(content: string) {
+    const selectedApplicationId = applicationId.trim() || defaultApplicationId
     const selectedUserId = userId.trim() || defaultUserId
-    const selectedChatId = chatId.trim() || defaultChatId
-    const selectedAgentId = agentId.trim()
+    const selectedChatId = chatId.trim() || createChatId()
+    const selectedAgentId = agentId.trim() || defaultAgentId
 
-    if (!content || isSending) {
-      return
-    }
-
-    const userMessage: Message = {
-      id: createId(),
-      role: "user",
-      content,
-    }
-
-    setMessages((current) => [...current, userMessage])
+    setMessages((current) => [
+      ...current,
+      {
+        id: createId(),
+        role: "user",
+        content,
+        createdAt: currentTime(),
+      },
+    ])
     setInput("")
     setIsSending(true)
 
-    if (!apiBaseUrl) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: createId(),
-          role: "assistant",
-          content: "A variavel NEXT_PUBLIC_CHAT_SEND_URL nao foi configurada.",
-        },
-      ])
-      setIsSending(false)
-      return
-    }
-
     try {
-      const sendUrl = `${apiBaseUrl}/users/${encodeURIComponent(selectedUserId)}/chats/${encodeURIComponent(selectedChatId)}/messages`
-      const response = await fetch(sendUrl, {
+      const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          application_id: selectedApplicationId,
+          user_id: selectedUserId,
+          chat_id: selectedChatId,
+          agent_id: selectedAgentId,
           message: content,
-          ...(selectedAgentId ? { agent_id: selectedAgentId } : {}),
+          metadata: { source: "chatbot-next" },
+          delivery: { type: "NONE" },
         }),
       })
 
-      if (!response.ok) {
-        let errorMessage = `Erro ${response.status} ao enviar a mensagem.`
-
-        try {
-          const data = (await response.json()) as { detail?: string; message?: string }
-
-          if (typeof data.detail === "string" && data.detail.trim()) {
-            errorMessage = `${errorMessage} ${data.detail}`
-          } else if (typeof data.message === "string" && data.message.trim()) {
-            errorMessage = `${errorMessage} ${data.message}`
-          }
-        } catch {
-          // Mantem a mensagem padrao.
-        }
-
-        throw new Error(errorMessage)
+      const data = (await response.json()) as {
+        detail?: string
+        message_id?: string
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Nao foi possivel enviar a mensagem. Tente novamente."
 
+      if (!response.ok) {
+        throw new Error(
+          data.detail || `A API retornou o erro ${response.status}.`
+        )
+      }
+
+      setApiStatus("online")
       setMessages((current) => [
         ...current,
         {
           id: createId(),
-          role: "assistant",
-          content: errorMessage,
+          role: "system",
+          content:
+            "Mensagem aceita pelo gateway e encaminhada para processamento.",
+          createdAt: currentTime(),
+          messageId: data.message_id,
+          status: "accepted",
+        },
+      ])
+    } catch (error) {
+      setApiStatus("offline")
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId(),
+          role: "system",
+          content:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível enviar a mensagem. Tente novamente.",
+          createdAt: currentTime(),
+          status: "error",
         },
       ])
     } finally {
       setIsSending(false)
+      window.setTimeout(() => textareaRef.current?.focus(), 0)
     }
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const content = input.trim()
+
+    if (!content || isSending) return
+    void sendMessage(content)
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault()
+      event.currentTarget.form?.requestSubmit()
+    }
+  }
+
+  function startNewChat() {
+    setChatId(createChatId())
+    setMessages([
+      {
+        id: createId(),
+        role: "assistant",
+        content: "Nova conversa iniciada. O que você quer testar?",
+        createdAt: currentTime(),
+      },
+    ])
+    window.setTimeout(() => textareaRef.current?.focus(), 0)
+  }
+
+  const statusLabel =
+    apiStatus === "offline"
+      ? "API indisponível"
+      : streamConnected
+        ? "Retorno conectado"
+        : apiStatus === "checking"
+          ? "Verificando API"
+          : "Conectando retorno"
+
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/30 p-4 sm:p-6">
-      <Card className="flex h-[calc(100svh-2rem)] w-full max-w-4xl border-border/60 shadow-sm sm:h-[calc(100svh-3rem)]">
-        <CardHeader className="border-b">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle>Chatbot</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Chat simples conectado em {apiBaseUrl}.
+    <main className="chat-shell">
+      <section className="chat-panel" aria-label="Playground do agente">
+        <header className="chat-header">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="agent-mark" aria-hidden="true">
+              <Bot className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
+                  Agent Playground
+                </h1>
+                <Badge
+                  variant={
+                    apiStatus === "offline" ? "destructive" : "secondary"
+                  }
+                  className="hidden sm:inline-flex"
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      apiStatus === "online" && streamConnected
+                        ? "bg-emerald-500"
+                        : apiStatus === "checking"
+                          ? "animate-pulse bg-amber-500"
+                          : "bg-red-500"
+                    }`}
+                  />
+                  {statusLabel}
+                </Badge>
+              </div>
+              <p className="truncate text-xs text-muted-foreground sm:text-sm">
+                Teste o envio de mensagens para o seu agente
               </p>
             </div>
-            <Badge variant={isSending ? "default" : "secondary"}>
-              {isSending ? "Enviando" : "Online"}
-            </Badge>
           </div>
-        </CardHeader>
 
-        <CardContent className="flex min-h-0 flex-1 px-0">
-          <ScrollArea className="h-full w-full px-4 sm:px-6">
-            <div className="flex min-h-full flex-col gap-4 py-4">
-              {messages.map((message) => {
-                const isUser = message.role === "user"
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={startNewChat}
+          >
+            <MessageSquarePlus data-icon="inline-start" />
+            <span className="hidden sm:inline">Nova conversa</span>
+          </Button>
+        </header>
 
-                return (
-                  <div
-                    key={message.id}
-                    className={`flex items-end gap-3 ${
-                      isUser ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    {!isUser && (
-                      <Avatar size="sm">
-                        <AvatarFallback>AI</AvatarFallback>
-                      </Avatar>
-                    )}
+        <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="settings-trigger" type="button">
+              <span className="flex min-w-0 items-center gap-2">
+                <Settings2 className="size-4 shrink-0" />
+                <span className="font-medium">Configuração do teste</span>
+                <span className="hidden truncate text-muted-foreground sm:inline">
+                  {agentId || defaultAgentId} · {chatId}
+                </span>
+              </span>
+              <ChevronDown
+                className={`size-4 shrink-0 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="settings-content">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Field
+                id="application-id"
+                label="Aplicação"
+                value={applicationId}
+                onChange={setApplicationId}
+                placeholder={defaultApplicationId}
+              />
+              <Field
+                id="user-id"
+                label="Usuário"
+                value={userId}
+                onChange={setUserId}
+                placeholder={defaultUserId}
+              />
+              <Field
+                id="chat-id"
+                label="Conversa"
+                value={chatId}
+                onChange={setChatId}
+                placeholder="chat-1"
+              />
+              <Field
+                id="agent-id"
+                label="Agente"
+                value={agentId}
+                onChange={setAgentId}
+                placeholder={defaultAgentId}
+                list="available-agents"
+              />
+              <datalist id="available-agents">
+                <option value="simple-agent" />
+              </datalist>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[75%] ${
-                        isUser
-                          ? "rounded-br-md bg-primary text-primary-foreground"
-                          : "rounded-bl-md bg-muted text-foreground"
-                      }`}
-                    >
-                      {message.content}
-                    </div>
-
-                    {isUser && (
-                      <Avatar size="sm">
-                        <AvatarFallback>VO</AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                )
-              })}
-
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-6 sm:px-8 sm:py-8">
+            <div className="flex flex-1 flex-col justify-end gap-5">
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              {isSending && (
+                <div className="flex items-center gap-2 pl-11 text-sm text-muted-foreground">
+                  <LoaderCircle className="size-4 animate-spin" />
+                  Enviando para o gateway…
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
-        </CardContent>
+          </div>
+        </ScrollArea>
 
-        <CardFooter>
-          <form className="flex w-full flex-col gap-3" onSubmit={handleSubmit}>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <Label htmlFor="user-id">Usuário</Label>
-                <Input
-                  id="user-id"
-                  value={userId}
-                  onChange={(event) => setUserId(event.target.value)}
-                  placeholder={defaultUserId}
-                  disabled={isSending}
-                  autoComplete="off"
-                />
+        <footer className="composer-wrap">
+          <div className="mx-auto w-full max-w-3xl">
+            {messages.length === 1 && (
+              <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className="suggestion-chip"
+                    onClick={() => setInput(suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
+            )}
 
-              <div className="space-y-1">
-                <Label htmlFor="chat-id">Chat</Label>
-                <Input
-                  id="chat-id"
-                  value={chatId}
-                  onChange={(event) => setChatId(event.target.value)}
-                  placeholder={defaultChatId}
-                  disabled={isSending}
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="agent-id">Agente</Label>
-                <Input
-                  id="agent-id"
-                  value={agentId}
-                  onChange={(event) => setAgentId(event.target.value)}
-                  placeholder={defaultAgentId}
-                  list="available-agents"
-                  disabled={isSending}
-                  autoComplete="off"
-                />
-                <datalist id="available-agents">
-                  <option value="agent1" />
-                  <option value="agent2" />
-                </datalist>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Input
+            <form className="composer" onSubmit={handleSubmit}>
+              <Textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Digite sua mensagem..."
+                onKeyDown={handleKeyDown}
+                placeholder="Escreva uma mensagem para o agente…"
+                className="max-h-36 min-h-12 resize-none border-0 bg-transparent px-3 py-3 shadow-none focus-visible:ring-0"
                 disabled={isSending}
-                autoComplete="off"
+                aria-label="Mensagem"
               />
-              <Button type="submit" disabled={isSending || !input.trim()}>
-                Enviar
+              <Button
+                type="submit"
+                size="icon-lg"
+                className="mr-1.5 mb-1.5 rounded-xl"
+                disabled={isSending || !input.trim() || !streamConnected}
+                aria-label="Enviar mensagem"
+              >
+                {isSending ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <Send />
+                )}
               </Button>
-            </div>
-          </form>
-        </CardFooter>
-      </Card>
+            </form>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Enter para enviar · Shift + Enter para quebrar linha
+            </p>
+          </div>
+        </footer>
+      </section>
     </main>
+  )
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  list,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  list?: string
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        list={list}
+        autoComplete="off"
+        className="bg-background"
+      />
+    </div>
+  )
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  if (message.role === "system") {
+    const isError = message.status === "error"
+
+    return (
+      <div
+        className={`system-message ${isError ? "system-message-error" : ""}`}
+        role={isError ? "alert" : "status"}
+      >
+        {isError ? (
+          <CircleAlert className="mt-0.5 size-4 shrink-0" />
+        ) : (
+          <Check className="mt-0.5 size-4 shrink-0" />
+        )}
+        <div className="min-w-0">
+          <p>{message.content}</p>
+          {message.messageId && (
+            <p className="mt-1 truncate font-mono text-[10px] opacity-70">
+              ID: {message.messageId}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const isUser = message.role === "user"
+
+  return (
+    <article className={`message-row ${isUser ? "message-row-user" : ""}`}>
+      <div className={`message-avatar ${isUser ? "message-avatar-user" : ""}`}>
+        {isUser ? <UserRound /> : <Bot />}
+      </div>
+      <div className={`message-block ${isUser ? "items-end" : "items-start"}`}>
+        <div
+          className={`message-bubble ${isUser ? "message-bubble-user" : ""}`}
+        >
+          {message.content}
+        </div>
+        {message.createdAt && (
+          <time className="px-1 text-[10px] text-muted-foreground">
+            {message.createdAt}
+          </time>
+        )}
+      </div>
+    </article>
   )
 }

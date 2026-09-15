@@ -1,163 +1,78 @@
-# Simple Agent
+# Simple Agent Job
 
-O **Simple Agent** é um agente simples criado com **LangGraph** para testar a estrutura básica de um agente.
+## Descrição
+Worker que consome mensagens do RabbitMQ, processa através de um agente de IA e publica a resposta via **Redis Pub/Sub**. Não utiliza filas de saída no RabbitMQ — toda a entrega da resposta é feita exclusivamente pelo Redis Pub/Sub.
 
-## Execução
+## Responsabilidades
+- Consumir mensagens da fila RabbitMQ configurada
+- Processar cada mensagem através do grafo do agente (LangGraph)
+- Publicar respostas completas via **Redis Pub/Sub** para entrega aos clientes
+- Reconectar automaticamente em caso de falha no RabbitMQ
 
-O fluxo de entrada usa um exchange `direct` e uma fila exclusiva deste agente. A fila de saída existente foi preservada:
+## Contrato de Entrada
 
-```text
-Agent Gateway API
-  -> exchange agent.requests
-  -> routing key agent.simple
-  -> queue agent.simple.requests
-  -> Simple Agent Worker
-  -> Redis Pub/Sub (message.completed)
+**Fonte:** Fila RabbitMQ (`RABBITMQ_QUEUE`, padrão: `agent.simple.requests`)
+
+**Payload esperado:**
+```json
+{
+  "message_id": "uuid",              // Identificador único da mensagem
+  "application_id": "string",        // Identificador da aplicação origem
+  "user_id": "string?",              // Identificador do usuário
+  "chat_id": "string?",              // Identificador do chat/conversa
+  "agent_id": "string",              // Identificador do agente
+  "message": "string",               // Conteúdo a ser processado (obrigatório, não vazio)
+  "metadata": "object?",             // Metadados opcionais
+  "delivery": "object?"              // Configuração de entrega da resposta
+}
 ```
 
-Na pasta deste job, instale as dependências e inicie o worker:
+## Contrato de Saída
 
-```powershell
-uv sync
-uv run python src/main.py
+**Destino:** **Redis Pub/Sub** (canal prefixado por `REDIS_RESPONSE_CHANNEL_PREFIX`, padrão: `chat:response`)
+
+**Evento publicado:**
+```json
+{
+  "type": "message.completed",
+  "application_id": "string",
+  "conversation_id": "string",       // Derivado de chat_id ou conversation_id
+  "message_id": "uuid",
+  "agent_id": "string",
+  "content": "string"                // Resposta gerada pelo agente
+}
 ```
 
-O processo permanece aguardando mensagens sem fazer polling contínuo. Para testar apenas o agente no terminal, sem RabbitMQ:
+**Canal Redis:** O canal é construído como `chat:response:{application_id}:{conversation_id}` usando URL encoding para os identificadores.
 
-```powershell
-uv run python src/test_main.py
-```
+**Subscribers:** O método `publish_completed` retorna o número de subscribers que receberam a mensagem.
 
-Use `sair`, `exit` ou `quit` para encerrar o teste local.
+## Configuração (Variáveis de Ambiente)
 
-As principais configurações do worker são:
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `AGENT_ID` | `simple-agent` | Identificador do agente |
+| `RABBITMQ_EXCHANGE` | `agent.requests` | Exchange do RabbitMQ |
+| `RABBITMQ_QUEUE` | `agent.simple.requests` | Fila de consumo |
+| `RABBITMQ_ROUTING_KEY` | `agent.simple` | Routing key |
+| `RABBITMQ_PREFETCH_COUNT` | `1` | Prefetch count do RabbitMQ |
+| `RABBITMQ_RECONNECT_DELAY` | `3` | Delay em segundos para reconexão |
+| `REDIS_RESPONSE_CHANNEL_PREFIX` | `chat:response` | Prefixo do canal Redis Pub/Sub |
+| `LOG_LEVEL` | `INFO` | Nível de log |
 
-```text
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USER=admin
-RABBITMQ_PASSWORD=admin123
-RABBITMQ_VHOST=/
-AGENT_ID=simple-agent
-RABBITMQ_EXCHANGE=agent.requests
-RABBITMQ_QUEUE=agent.simple.requests
-RABBITMQ_ROUTING_KEY=agent.simple
-RABBITMQ_PREFETCH_COUNT=1
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
-REDIS_RESPONSE_CHANNEL_PREFIX=chat:response
-```
+## Arquitetura de Entrega
 
-Ele recebe uma mensagem e retorna:
+Este serviço **não utiliza filas de saída no RabbitMQ**. A resposta do agente é publicada diretamente no Redis Pub/Sub, onde os clientes (aplicações frontend, websockets, etc.) se inscrevem para receber as respostas em tempo real.
 
-```text
-Eu recebi a mensagem: <mensagem enviada>
-```
+Fluxo:
+1. Mensagem chega via RabbitMQ (fila de entrada)
+2. Agente processa a mensagem (LangGraph)
+3. Resposta é publicada no Redis Pub/Sub
+4. Subscribers recebem a resposta instantaneamente
 
-Exemplo:
-
-```text
-Entrada:
-Olá
-
-Saída:
-Eu recebi a mensagem: Olá
-```
-
-## Arquitetura
-
-```text
-simple-agent/
-├── src/
-│   └── simple_agent/
-│       ├── graph/
-│       │   ├── __init__.py
-│       │   ├── graph.py
-│       │   ├── state.py
-│       │   └── nodes.py
-│       │
-│       ├── prompts/
-│       │   ├── __init__.py
-│       │   └── system_prompt.py
-│       │
-│       └── tools/
-│           └── __init__.py
-│
-├── main.py
-└── pyproject.toml
-```
-
-### `graph/`
-
-Contém o fluxo do agente.
-
-```text
-graph.py  → cria e compila o grafo do LangGraph
-state.py  → define os dados que passam pelo grafo
-nodes.py  → contém as funções executadas pelo grafo
-```
-
-Fluxo atual:
-
-```text
-START
-  ↓
-receive_message
-  ↓
-END
-```
-
-### `prompts/`
-
-Contém os prompts e instruções do agente.
-
-```text
-system_prompt.py
-```
-
-Atualmente define a identificação do agente, por exemplo:
-
-```text
-Eu sou o Simple Agent.
-Sou um agente simples criado para testar o funcionamento do LangGraph.
-```
-
-### `tools/`
-
-Contém as ferramentas que poderão ser utilizadas pelo agente.
-
-Atualmente o agente ainda não possui tools, mas a pasta já existe para futuras implementações.
-
-### `main.py`
-
-É o ponto de entrada para executar e testar o agente.
-
-O fluxo completo é:
-
-```text
-Mensagem
-   ↓
-main.py
-   ↓
-LangGraph
-   ↓
-AgentState
-   ↓
-receive_message
-   ↓
-Resposta
-```
-
-## O que o agente faz
-
-Nesta primeira versão, o Simple Agent:
-
-* recebe uma mensagem;
-* executa essa mensagem através de um grafo LangGraph;
-* adiciona a identificação do agente;
-* retorna a mensagem recebida.
-
-Ele ainda não utiliza LLM.
-
-A finalidade atual é apenas validar a arquitetura básica do LangGraph antes de adicionar modelos, tools e integrações externas.
+## Tecnologias
+- Python 3.10+
+- LangGraph (grafo do agente)
+- RabbitMQ (Pika) — apenas para consumo de mensagens
+- Redis (Pub/Sub) — apenas para publicação de respostas
+- python-dotenv

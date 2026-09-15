@@ -21,17 +21,17 @@ class RabbitMQConnection:
             return
 
         credentials = pika.PlainCredentials(
-            os.getenv("RABBITMQ_USER", "admin"),
-            os.getenv("RABBITMQ_PASSWORD", "admin123"),
+            os.environ["RABBITMQ_USER"],
+            os.environ["RABBITMQ_PASSWORD"],
         )
         parameters = pika.ConnectionParameters(
-            host=os.getenv("RABBITMQ_HOST", "localhost"),
-            port=int(os.getenv("RABBITMQ_PORT", "5672")),
-            virtual_host=os.getenv("RABBITMQ_VHOST", "/"),
+            host=os.environ["RABBITMQ_HOST"],
+            port=int(os.environ["RABBITMQ_PORT"]),
+            virtual_host=os.environ["RABBITMQ_VHOST"],
             credentials=credentials,
-            connection_attempts=int(os.getenv("RABBITMQ_CONNECTION_ATTEMPTS", "1")),
-            retry_delay=float(os.getenv("RABBITMQ_RETRY_DELAY", "1")),
-            socket_timeout=float(os.getenv("RABBITMQ_SOCKET_TIMEOUT", "5")),
+            connection_attempts=int(os.environ["RABBITMQ_CONNECTION_ATTEMPTS"]),
+            retry_delay=float(os.environ["RABBITMQ_RETRY_DELAY"]),
+            socket_timeout=float(os.environ["RABBITMQ_SOCKET_TIMEOUT"]),
             blocked_connection_timeout=5,
         )
 
