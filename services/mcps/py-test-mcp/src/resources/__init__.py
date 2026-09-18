@@ -1,0 +1,1 @@
+from resources import test_resource  # noqa: F401

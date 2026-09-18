@@ -1,0 +1,1 @@
+from prompts import test_prompt  # noqa: F401
