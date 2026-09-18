@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 
 const apiBaseUrl = (
   process.env.CHAT_API_URL ??
-  process.env.NEXT_PUBLIC_CHAT_SEND_URL ??
   "http://localhost:8000"
 ).replace(/\/$/, "")
 

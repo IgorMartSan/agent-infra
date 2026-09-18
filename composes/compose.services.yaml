@@ -79,23 +79,41 @@ services:
     networks:
       - agent_platform_network
 
+  worker-sql-agent:
+    build:
+      context: ..
+      dockerfile: services/jobs/py-sql-agent-job/Dockerfile
+    container_name: worker-sql-agent
+    restart: unless-stopped
+    env_file:
+      - ../services/jobs/py-sql-agent-job/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agent_platform_network
+
   chatbot-next:
     build:
       context: ..
       dockerfile: services/frontend/chatbot-next/Dockerfile
-      args:
-        NEXT_PUBLIC_CHAT_SEND_URL: ${NEXT_PUBLIC_CHAT_SEND_URL:-http://192.168.15.15:8000}
-        NEXT_PUBLIC_CHAT_WS_URL: ${NEXT_PUBLIC_CHAT_WS_URL:-ws://192.168.15.15:8000/ws}
     restart: unless-stopped
     working_dir: /app
     command: npm run start -- --hostname 0.0.0.0 --port 3000
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
+      CHAT_API_URL: http://py-agent-gateway-api:8000
+      CHAT_REDIS_URL: redis://redis:6379/0
     depends_on:
-      - py-agent-gateway-api
+      py-agent-gateway-api:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - agent_platform_network
 

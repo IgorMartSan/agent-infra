@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 
-from sqlalchemy import Engine, URL, create_engine
+from sqlalchemy import URL, Engine, create_engine
 
 
 def _required_env(name: str) -> str:

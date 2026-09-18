@@ -12,7 +12,7 @@ def get_chat_model() -> ChatOpenAI:
         base_url=os.getenv("OPENAI_BASE_URL", "http://10.247.168.43:8072/v1"),
         api_key=os.getenv("OPENAI_API_KEY", "EMPTY"),
         temperature=float(os.getenv("OPENAI_TEMPERATURE", "0.2")),
-        max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "1024")),
+        #max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "1024")),
         timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "120")),
         max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "2")),
     )

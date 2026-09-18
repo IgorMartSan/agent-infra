@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 import processor
+from graph.memory import thread_id_for
 from processor import InvalidMessageError
 
 
@@ -10,6 +11,7 @@ def test_processes_message_and_preserves_request_context(monkeypatch: pytest.Mon
     payload = {
         "message_id": "message-123",
         "application_id": "erp",
+        "chat_id": "chat-1",
         "agent_id": "agent-suporte",
         "message": "Olá",
     }
@@ -25,7 +27,7 @@ def test_processes_message_and_preserves_request_context(monkeypatch: pytest.Mon
     assert result["message"] == "Olá"
     assert result["status"] == "PROCESSED"
     assert result["response"] == "Resposta gerada pelo Gemma 4"
-    invoke.assert_called_once_with({"message": "Olá", "response": ""})
+    invoke.assert_called_once_with({"message": "Olá", "response": "", "thread_id": thread_id_for(payload)})
 
 
 @pytest.mark.parametrize("payload", [{}, {"message": ""}, {"message": "   "}, {"message": None}])

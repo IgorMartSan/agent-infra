@@ -33,6 +33,18 @@ class AgentResponsePubSubRepository:
 
         return ":".join(channel_parts)
 
+    def _publish_event(self, event: dict, application_id, conversation_id) -> int:
+        try:
+            return int(
+                self._redis.publish(
+                    self.channel_name(application_id, conversation_id),
+                    json.dumps(event, ensure_ascii=False),
+                )
+            )
+        except RedisError:
+            logger.exception("Erro ao publicar evento no Redis Pub/Sub")
+            raise
+
     def publish_completed(
         self,
         *,
@@ -42,6 +54,7 @@ class AgentResponsePubSubRepository:
         agent_id: str | None,
         content: str,
     ) -> int:
+        """Publica o evento final de sucesso no canal da conversa."""
         event = {
             "type": "message.completed",
             "application_id": application_id,
@@ -50,14 +63,24 @@ class AgentResponsePubSubRepository:
             "agent_id": agent_id,
             "content": content,
         }
+        return self._publish_event(event, application_id, conversation_id)
 
-        try:
-            return int(
-                self._redis.publish(
-                    self.channel_name(application_id, conversation_id),
-                    json.dumps(event, ensure_ascii=False),
-                )
-            )
-        except RedisError:
-            logger.exception("Erro ao publicar resposta final no Redis")
-            raise
+    def publish_failed(
+        self,
+        *,
+        application_id: str | None,
+        conversation_id: str | None,
+        message_id: str | None,
+        agent_id: str | None,
+        reason: str,
+    ) -> int:
+        """Publica o evento de falha no mesmo canal, para o cliente não ficar sem resposta."""
+        event = {
+            "type": "message.failed",
+            "application_id": application_id,
+            "conversation_id": conversation_id,
+            "message_id": message_id,
+            "agent_id": agent_id,
+            "content": reason,
+        }
+        return self._publish_event(event, application_id, conversation_id)

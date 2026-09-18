@@ -28,13 +28,13 @@ import {
 } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import type { Message } from "@/types/chat"
 
 const defaultApplicationId = "chatbot-next"
 const defaultUserId = "user-1"
-const defaultAgentId = "gemma4-agent"
 
 const suggestions = [
   "Olá! Quem é você?",
@@ -65,6 +65,16 @@ function currentTime() {
 }
 
 type ApiStatus = "checking" | "online" | "offline"
+type AvailableAgent = { agent_id: string }
+
+async function isApiOnline(signal?: AbortSignal) {
+  try {
+    const response = await fetch("/api/chat", { cache: "no-store", signal })
+    return response.ok
+  } catch {
+    return false
+  }
+}
 
 export function Chatbot() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -82,30 +92,79 @@ export function Chatbot() {
   const [input, setInput] = useState("")
   const [applicationId, setApplicationId] = useState(defaultApplicationId)
   const [userId, setUserId] = useState(defaultUserId)
-  const [chatId, setChatId] = useState("chat-1")
-  const [agentId, setAgentId] = useState(defaultAgentId)
+  const [chatId, setChatId] = useState("")
+  const [agentId, setAgentId] = useState("")
+  const [availableAgents, setAvailableAgents] = useState<AvailableAgent[]>([])
+  const [agentsLoading, setAgentsLoading] = useState(true)
+  const [agentsError, setAgentsError] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking")
   const [streamConnected, setStreamConnected] = useState(false)
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const storedChatId = window.sessionStorage.getItem(
+        "agent-playground-chat-id"
+      )
+      const initialChatId = storedChatId || createChatId()
+      window.sessionStorage.setItem("agent-playground-chat-id", initialChatId)
+      setChatId(initialChatId)
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void isApiOnline(controller.signal).then((online) => {
+      if (!controller.signal.aborted)
+        setApiStatus(online ? "online" : "offline")
+    })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
     const controller = new AbortController()
 
-    async function checkApi() {
+    async function loadAgents() {
       try {
-        const response = await fetch("/api/chat", {
+        const response = await fetch("/api/agents", {
           cache: "no-store",
           signal: controller.signal,
         })
-        setApiStatus(response.ok ? "online" : "offline")
+        if (!response.ok) throw new Error("Falha ao carregar os agentes")
+
+        const data = (await response.json()) as { agents: AvailableAgent[] }
+        if (!Array.isArray(data.agents))
+          throw new Error("Lista de agentes inválida")
+        if (controller.signal.aborted) return
+
+        const agents = data.agents
+          .filter(
+            (agent) =>
+              typeof agent.agent_id === "string" && agent.agent_id.trim()
+          )
+          .sort((a, b) => a.agent_id.localeCompare(b.agent_id))
+        setAvailableAgents(agents)
+        setAgentId((current) =>
+          agents.some((agent) => agent.agent_id === current)
+            ? current
+            : (agents[0]?.agent_id ?? "")
+        )
+        setAgentsError(false)
       } catch {
-        if (!controller.signal.aborted) setApiStatus("offline")
+        if (!controller.signal.aborted) setAgentsError(true)
+      } finally {
+        if (!controller.signal.aborted) setAgentsLoading(false)
       }
     }
 
-    void checkApi()
-    return () => controller.abort()
+    void loadAgents()
+    const interval = window.setInterval(() => void loadAgents(), 15000)
+    return () => {
+      controller.abort()
+      window.clearInterval(interval)
+    }
   }, [])
 
   useEffect(() => {
@@ -113,8 +172,10 @@ export function Chatbot() {
   }, [messages, isSending])
 
   useEffect(() => {
+    if (!chatId.trim()) return
+
     const selectedApplicationId = applicationId.trim() || defaultApplicationId
-    const selectedChatId = chatId.trim() || "chat-1"
+    const selectedChatId = chatId.trim()
     const params = new URLSearchParams({
       application_id: selectedApplicationId,
       chat_id: selectedChatId,
@@ -148,9 +209,10 @@ export function Chatbot() {
           ...current,
           {
             id: data.message_id || createId(),
-            role: "assistant",
+            role: data.type === "message.failed" ? "system" : "assistant",
             content,
             createdAt: currentTime(),
+            status: data.type === "message.failed" ? "error" : undefined,
           },
         ])
       } catch {
@@ -164,8 +226,8 @@ export function Chatbot() {
   async function sendMessage(content: string) {
     const selectedApplicationId = applicationId.trim() || defaultApplicationId
     const selectedUserId = userId.trim() || defaultUserId
-    const selectedChatId = chatId.trim() || createChatId()
-    const selectedAgentId = agentId.trim() || defaultAgentId
+    const selectedChatId = chatId.trim()
+    const selectedAgentId = agentId
 
     setMessages((current) => [
       ...current,
@@ -219,7 +281,7 @@ export function Chatbot() {
         },
       ])
     } catch (error) {
-      setApiStatus("offline")
+      setApiStatus((await isApiOnline()) ? "online" : "offline")
       setMessages((current) => [
         ...current,
         {
@@ -243,7 +305,8 @@ export function Chatbot() {
     event.preventDefault()
     const content = input.trim()
 
-    if (!content || isSending) return
+    if (!content || isSending || !agentId || !chatId.trim() || !streamConnected)
+      return
     void sendMessage(content)
   }
 
@@ -255,7 +318,9 @@ export function Chatbot() {
   }
 
   function startNewChat() {
-    setChatId(createChatId())
+    const newChatId = createChatId()
+    window.sessionStorage.setItem("agent-playground-chat-id", newChatId)
+    setChatId(newChatId)
     setMessages([
       {
         id: createId(),
@@ -331,7 +396,7 @@ export function Chatbot() {
                 <Settings2 className="size-4 shrink-0" />
                 <span className="font-medium">Configuração do teste</span>
                 <span className="hidden truncate text-muted-foreground sm:inline">
-                  {agentId || defaultAgentId} · {chatId}
+                  {agentId || "Sem agente"} · {chatId || "Iniciando conversa"}
                 </span>
               </span>
               <ChevronDown
@@ -340,7 +405,7 @@ export function Chatbot() {
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="settings-content">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-3">
               <Field
                 id="application-id"
                 label="Aplicação"
@@ -359,24 +424,50 @@ export function Chatbot() {
                 id="chat-id"
                 label="Conversa"
                 value={chatId}
-                onChange={setChatId}
+                onChange={(value) => {
+                  window.sessionStorage.setItem(
+                    "agent-playground-chat-id",
+                    value
+                  )
+                  setChatId(value)
+                }}
                 placeholder="chat-1"
               />
-              <Field
-                id="agent-id"
-                label="Agente"
-                value={agentId}
-                onChange={setAgentId}
-                placeholder={defaultAgentId}
-                list="available-agents"
-              />
-              <datalist id="available-agents">
-                <option value="gemma4-agent" />
-                <option value="simple-agent" />
-              </datalist>
             </div>
           </CollapsibleContent>
         </Collapsible>
+
+        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 sm:px-6">
+          <Label htmlFor="agent-id" className="text-sm font-medium">
+            Agente
+          </Label>
+          <NativeSelect
+            id="agent-id"
+            className="min-w-48 flex-1 sm:max-w-64"
+            value={agentId}
+            onChange={(event) => setAgentId(event.target.value)}
+            disabled={agentsLoading || availableAgents.length === 0}
+            aria-label="Escolher agente"
+          >
+            {availableAgents.length === 0 && (
+              <NativeSelectOption value="">
+                {agentsLoading
+                  ? "Carregando agentes..."
+                  : "Nenhum agente disponível"}
+              </NativeSelectOption>
+            )}
+            {availableAgents.map((agent) => (
+              <NativeSelectOption key={agent.agent_id} value={agent.agent_id}>
+                {agent.agent_id}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          {agentsError && (
+            <span className="text-xs text-destructive" role="status">
+              Não foi possível atualizar a lista de agentes.
+            </span>
+          )}
+        </div>
 
         <ScrollArea className="min-h-0 flex-1">
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-6 sm:px-8 sm:py-8">
@@ -427,7 +518,13 @@ export function Chatbot() {
                 type="submit"
                 size="icon-lg"
                 className="mr-1.5 mb-1.5 rounded-xl"
-                disabled={isSending || !input.trim() || !streamConnected}
+                disabled={
+                  isSending ||
+                  !input.trim() ||
+                  !streamConnected ||
+                  !agentId ||
+                  !chatId.trim()
+                }
                 aria-label="Enviar mensagem"
               >
                 {isSending ? (
@@ -453,14 +550,12 @@ function Field({
   value,
   onChange,
   placeholder,
-  list,
 }: {
   id: string
   label: string
   value: string
   onChange: (value: string) => void
   placeholder: string
-  list?: string
 }) {
   return (
     <div className="space-y-1.5">
@@ -472,7 +567,6 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        list={list}
         autoComplete="off"
         className="bg-background"
       />
