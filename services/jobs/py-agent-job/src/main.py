@@ -1,176 +1,162 @@
-"""Worker de produção do Agente Unificado — fluxo: RabbitMQ -> agente MCP -> Redis Pub/Sub.
+"""Worker didático: RabbitMQ → Agente (via AGENT_ID) → Redis Pub/Sub.
 
-A configuração do agente (ID, filas, MCP server) é lida inteiramente do .env,
-permitindo que este mesmo código sirva múltiplos agentes apenas trocando o ambiente.
+Variáveis de ambiente obrigatórias (definidas no .env ou compose):
+- RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_PASSWORD
+- RABBITMQ_QUEUE (fila que este worker consome)
+- REDIS_HOST, REDIS_PORT
+- AGENT_ID (ex: rsa-agent)
 
-Estrutura do fluxo (visível em 5 passos dentro de handle_message):
-1. O consumer entrega o payload recebido do RabbitMQ.
-2. O processor valida o payload e roda o agente (LangGraph + MCP tools).
-3. A resposta é publicada no Redis Pub/Sub no canal da conversa.
-4. O ACK confirma o processamento ao RabbitMQ.
-5. Se algo falhar, o consumer decide reprocessar ou descartar.
+As demais configurações possuem padrões sensíveis no próprio código.
 """
-
+import asyncio
+import json
 import logging
 import os
-import time
 
+import pika
+import redis.asyncio as aioredis
 from dotenv import load_dotenv
 
-from infra.rabbitmq.connection import RabbitMQConnection
-from infra.rabbitmq.consumer import RabbitMQConsumer
-from infra.redis import (
-    AgentRegistry,
-    AgentResponsePubSubRepository,
-    ConversationLock,
-    RedisConnection,
-)
-from processor import AgentProcessingError, InvalidMessageError, process_agent_message
+from agents.registry import get_agent_graph
 
 load_dotenv()
 
+# === Configurações com padrões no código ===
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "agent.requests")
+RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "")
+RABBITMQ_PREFETCH = int(os.getenv("RABBITMQ_PREFETCH_COUNT", "1"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None) or None
+REDIS_CHANNEL_PREFIX = os.getenv("REDIS_RESPONSE_CHANNEL_PREFIX", "chat:response")
+
 logging.basicConfig(
-    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    level=LOG_LEVEL,
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
-def build_response_publisher() -> AgentResponsePubSubRepository:
-    """Cria o publicador de respostas no Redis Pub/Sub (passo 3)."""
-    return AgentResponsePubSubRepository(
-        RedisConnection(),
-        channel_prefix=os.environ["REDIS_RESPONSE_CHANNEL_PREFIX"],
-    )
+def _require_env(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Variável obrigatória não definida: {name}")
+    return value
 
 
-def run_worker() -> None:
-    agent_id = os.environ["AGENT_ID"]
-    exchange = os.environ["RABBITMQ_EXCHANGE"]
-    queue = os.environ["RABBITMQ_QUEUE"]
-    routing_key = os.environ["RABBITMQ_ROUTING_KEY"]
-    prefetch_count = int(os.environ["RABBITMQ_PREFETCH_COUNT"])
-    reconnect_delay = float(os.environ["RABBITMQ_RECONNECT_DELAY"])
+async def publish_response(redis_client: aioredis.Redis, payload: dict, response: str) -> None:
+    """Publica a resposta do agente no canal Pub/Sub do Redis."""
+    conversation_id = payload.get("conversation_id") or payload.get("chat_id") or "unknown"
+    channel = f"{REDIS_CHANNEL_PREFIX}:{conversation_id}"
+    message = json.dumps({
+        "message_id": payload.get("message_id"),
+        "agent_id": payload.get("agent_id"),
+        "response": response,
+        "status": "COMPLETED",
+    }, ensure_ascii=False)
+    subscribers = await redis_client.publish(channel, message)
+    logger.info("Resposta publicada: channel=%s subscribers=%s", channel, subscribers)
 
-    redis_connection = RedisConnection()
-    response_pubsub = build_response_publisher()
-    conversation_lock = ConversationLock(redis_connection.get_client())
 
-    agent_registry = AgentRegistry(
-        redis_connection.get_client(),
-        agent_id,
-        ttl_seconds=int(os.environ.get("AGENT_HEARTBEAT_TTL_SECONDS", "30")),
-        interval_seconds=float(
-            os.environ.get("AGENT_HEARTBEAT_INTERVAL_SECONDS", "10")
-        ),
-    )
-    agent_registry.start()
-
-    logger.info(
-        "Agente unificado iniciado: agent_id=%s queue=%s mcp_server=%s",
-        agent_id,
-        queue,
-        os.getenv("MCP_SERVER_PATH", "não configurado"),
-    )
-
-    def release_lock(payload: dict) -> None:
-        """Libera a conversa para a próxima mensagem."""
-        try:
-            conversation_lock.release(
-                application_id=payload.get("application_id"),
-                chat_id=payload.get("chat_id"),
-                agent_id=payload.get("agent_id"),
-            )
-        except Exception:
-            logger.exception(
-                "Não foi possível liberar o lock da conversa: message_id=%s",
-                payload.get("message_id", "sem-id"),
-            )
-
-    def publish_error(payload: dict, reason: str) -> None:
-        """Publica o evento de falha no canal da conversa."""
-        conversation_id = payload.get("conversation_id") or payload.get("chat_id")
-        try:
-            subscribers = response_pubsub.publish_failed(
-                application_id=payload.get("application_id"),
-                conversation_id=conversation_id,
-                message_id=payload.get("message_id"),
-                agent_id=payload.get("agent_id"),
-                reason=reason,
-            )
-            logger.info(
-                "Falha notificada ao cliente: message_id=%s redis_subscribers=%s",
-                payload.get("message_id", "sem-id"),
-                subscribers,
-            )
-        except Exception:
-            logger.exception(
-                "Não foi possível notificar o cliente da falha: message_id=%s",
-                payload.get("message_id", "sem-id"),
-            )
-
-    def handle_message(payload: dict) -> None:
-        """Passos 1 a 3 do fluxo, executados para cada mensagem consumida."""
-        try:
-            response = process_agent_message(payload)
-        except AgentProcessingError as error:
-            publish_error(payload, str(error))
-            release_lock(payload)
-            raise
-
-        conversation_id = payload.get("conversation_id") or payload.get("chat_id")
-        subscribers = response_pubsub.publish_completed(
-            application_id=payload.get("application_id"),
-            conversation_id=conversation_id,
-            message_id=payload.get("message_id"),
-            agent_id=payload.get("agent_id"),
-            content=response["response"],
-        )
-        logger.info(
-            "Mensagem processada: message_id=%s redis_subscribers=%s",
-            payload.get("message_id", "sem-id"),
-            subscribers,
-        )
-        release_lock(payload)
+async def process_message(payload: dict, agent_graph, redis_client: aioredis.Redis) -> None:
+    """Executa o agente e publica o resultado no Redis."""
+    message = payload.get("message", "").strip()
+    if not message:
+        logger.warning("Mensagem vazia recebida; ignorando.")
+        return
 
     try:
-        while True:
-            connection = RabbitMQConnection()
-            consumer = RabbitMQConsumer(connection)
+        result = await agent_graph.ainvoke({
+            "message": message,
+            "response": "",
+            "thread_id": payload.get("thread_id", ""),
+        })
+        response = result.get("response", "").strip()
+        if not response:
+            raise RuntimeError("Agente retornou resposta vazia.")
+        await publish_response(redis_client, payload, response)
+    except Exception:
+        logger.exception("Falha ao processar mensagem: message_id=%s", payload.get("message_id"))
 
-            try:
-                logger.info(
-                    "Worker aguardando: agent_id=%s exchange=%s fila=%s routing_key=%s",
-                    agent_id,
-                    exchange,
-                    queue,
-                    routing_key,
-                )
-                consumer.consume(
-                    queue=queue,
-                    callback=handle_message,
-                    exchange=exchange,
-                    routing_key=routing_key,
-                    prefetch_count=prefetch_count,
-                    should_requeue=lambda exc: not isinstance(
-                        exc, (InvalidMessageError, AgentProcessingError)
-                    ),
-                )
-            except Exception:
-                logger.exception(
-                    "Falha no RabbitMQ; nova tentativa em %.1f segundo(s).",
-                    reconnect_delay,
-                )
-                time.sleep(reconnect_delay)
-            finally:
-                connection.close()
 
+def on_message(ch, method, properties, body, agent_graph, redis_client, loop):
+    """Callback síncrono do Pika que delega ao handler async."""
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        logger.error("Payload inválido (não é JSON); descartando.")
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        return
+
+    logger.info("Mensagem recebida: message_id=%s agent_id=%s", payload.get("message_id"), payload.get("agent_id"))
+
+    future = asyncio.run_coroutine_threadsafe(
+        process_message(payload, agent_graph, redis_client), loop
+    )
+    try:
+        future.result(timeout=300)
+    except Exception:
+        logger.exception("Erro no processamento async")
+    finally:
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
+def main() -> None:
+    agent_id = _require_env("AGENT_ID")
+    rabbitmq_host = _require_env("RABBITMQ_HOST")
+    rabbitmq_port = int(_require_env("RABBITMQ_PORT"))
+    rabbitmq_user = _require_env("RABBITMQ_USER")
+    rabbitmq_password = _require_env("RABBITMQ_PASSWORD")
+    queue = _require_env("RABBITMQ_QUEUE")
+    redis_host = _require_env("REDIS_HOST")
+    redis_port = int(_require_env("REDIS_PORT"))
+
+    logger.info("Iniciando worker: agent_id=%s queue=%s", agent_id, queue)
+
+    # Carrega o grafo do agente definido por AGENT_ID
+    agent_graph = get_agent_graph(agent_id)
+    logger.info("Agente carregado: %s", agent_id)
+
+    # Conexão Redis async
+    loop = asyncio.new_event_loop()
+    redis_client = loop.run_until_complete(
+        aioredis.from_url(
+            f"redis://{redis_host}:{redis_port}",
+            db=REDIS_DB,
+            password=REDIS_PASSWORD,
+            decode_responses=True,
+        )
+    )
+
+    # Conexão RabbitMQ (síncrona via Pika)
+    credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_password)
+    parameters = pika.ConnectionParameters(
+        host=rabbitmq_host,
+        port=rabbitmq_port,
+        credentials=credentials,
+        heartbeat=600,
+    )
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.queue_declare(queue=queue, durable=True)
+    channel.basic_qos(prefetch_count=RABBITMQ_PREFETCH)
+
+    def callback(ch, method, properties, body):
+        on_message(ch, method, properties, body, agent_graph, redis_client, loop)
+
+    channel.basic_consume(queue=queue, on_message_callback=callback)
+    logger.info("Aguardando mensagens na fila '%s'...", queue)
+
+    try:
+        channel.start_consuming()
     except KeyboardInterrupt:
         logger.info("Worker encerrado pelo usuário.")
     finally:
-        agent_registry.stop()
-        redis_connection.close()
+        channel.stop_consuming()
+        connection.close()
+        loop.run_until_complete(redis_client.aclose())
+        loop.close()
 
 
 if __name__ == "__main__":
-    run_worker()
+    main()

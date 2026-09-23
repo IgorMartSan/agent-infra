@@ -1,0 +1,1 @@
+"""Pacote de agentes específicos. Cada subpasta contém a lógica de um agente (nós, prompts, state)."""

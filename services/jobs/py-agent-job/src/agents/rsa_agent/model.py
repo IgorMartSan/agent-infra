@@ -6,7 +6,11 @@ from langchain_openai import ChatOpenAI
 
 @lru_cache(maxsize=1)
 def get_chat_model() -> ChatOpenAI:
-    """Cria o cliente LangChain para a API local compatível com OpenAI."""
+    """Cria o cliente LangChain para a API local compatível com OpenAI.
+
+    Esta função vive dentro do agente porque cada agente pode usar
+    um modelo diferente, temperatura distinta ou endpoints específicos.
+    """
     return ChatOpenAI(
         model=os.getenv("OPENAI_MODEL", "gemma4"),
         base_url=os.getenv("OPENAI_BASE_URL", "http://10.247.168.43:8072/v1"),
