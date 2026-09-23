@@ -1,7 +1,7 @@
 from langgraph.graph import END, START, StateGraph
 
-from agents.rsa_agent.graph.nodes import receive_message
-from agents.rsa_agent.graph.state import AgentState
+from agents.langchain_agents.rsa_agent.graph.nodes import receive_message
+from agents.langchain_agents.rsa_agent.graph.state import AgentState
 
 builder = StateGraph(AgentState)
 builder.add_node("receive_message", receive_message)

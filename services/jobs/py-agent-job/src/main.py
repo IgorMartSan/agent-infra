@@ -13,7 +13,7 @@ import os
 
 from dotenv import load_dotenv
 
-from agents.rsa_agent.graph import graph as rsa_graph
+from agents.langchain_agents.rsa_agent.graph import graph as rsa_graph
 from infra.redis.connection import RedisConnection
 from infra.rabbitmq.connection import RabbitMQConnection
 
@@ -70,8 +70,8 @@ if agent is None:
 # INFRAESTRUTURA
 # =========================================================
 
-redis_conn = RedisConnection()
-redis_client = redis_conn.get_client()
+redis_client = RedisConnection()
+
 
 rabbitmq_conn = RabbitMQConnection()
 

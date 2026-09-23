@@ -10,9 +10,9 @@ from uuid import uuid4
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
 
-from agents.rsa_agent.graph.state import AgentState
-from agents.rsa_agent.prompts.system_prompt import SYSTEM_PROMPT
-from agents.rsa_agent.model import get_chat_model
+from agents.langchain_agents.rsa_agent.graph.state import AgentState
+from agents.langchain_agents.rsa_agent.prompts.system_prompt import SYSTEM_PROMPT
+from agents.langchain_agents.rsa_agent.model import get_chat_model
 
 logger = logging.getLogger(__name__)
 
