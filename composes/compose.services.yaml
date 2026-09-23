@@ -46,6 +46,7 @@ services:
     environment:
       AGENT_ID: gemma4-agent
       LOG_LEVEL: INFO
+
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: admin
@@ -59,11 +60,13 @@ services:
       RABBITMQ_RETRY_DELAY: 1
       RABBITMQ_SOCKET_TIMEOUT: 5
       RABBITMQ_RECONNECT_DELAY: 3
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
       REDIS_PASSWORD: ""
       REDIS_RESPONSE_CHANNEL_PREFIX: chat:response
+      
       OPENAI_BASE_URL: http://10.247.168.43:8072/v1
       OPENAI_API_KEY: EMPTY
       OPENAI_MODEL: gemma4
@@ -87,6 +90,42 @@ services:
     restart: unless-stopped
     env_file:
       - ../services/jobs/py-sql-agent-job/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agent_platform_network
+
+  agent-rsa:
+    build:
+      context: ..
+      dockerfile: services/jobs/py-agent-job/Dockerfile
+    container_name: agent-rsa
+    restart: unless-stopped
+    # Variáveis de infra padrão vêm do .env da raiz (carregado automaticamente pelo Docker Compose).
+    # Este arquivo contém apenas o que é exclusivo do agente RSA.
+    env_file:
+      - ../services/jobs/py-agent-job/.env.rsa
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agent_platform_network
+
+  agent-sql:
+    build:
+      context: ..
+      dockerfile: services/jobs/py-agent-job/Dockerfile
+    container_name: agent-sql
+    restart: unless-stopped
+    # Variáveis de infra padrão vêm do .env da raiz (carregado automaticamente pelo Docker Compose).
+    # Este arquivo contém apenas o que é exclusivo do agente SQL.
+    env_file:
+      - ../services/jobs/py-agent-job/.env.sql
     depends_on:
       rabbitmq:
         condition: service_healthy

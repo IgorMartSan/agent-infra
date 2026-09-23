@@ -1,0 +1,34 @@
+[project]
+name = 'py-agent-job'
+version = '0.1.0'
+description = 'Unified agent job with MCP tools support'
+readme = 'README.md'
+requires-python = '>=3.10'
+dependencies = [
+    'langchain>=1.2.0,<2.0.0',
+    'langgraph>=1.1.4,<2.0.0',
+    'langchain-core>=1.0.0',
+    'langchain-openai>=1.1.0,<2.0.0',
+    'langchain-mcp-adapters>=0.1.0',
+    'pika>=1.3.2',
+    'python-dotenv>=1.2.2',
+    'redis>=7.4.0',
+    'infra',
+    'config',
+]
+
+[tool.uv.sources]
+infra = { path = '../../../packages/infra', editable = true }
+config = { path = '../../../packages/config', editable = true }
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.15.20",
+]

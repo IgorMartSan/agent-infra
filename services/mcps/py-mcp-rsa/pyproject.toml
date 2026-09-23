@@ -1,0 +1,11 @@
+[project]
+name = 'py-mcp-rsa'
+version = '0.1.0'
+description = 'MCP com infra de conexão SQLAlchemy e tool de listagem de tabelas'
+requires-python = '>=3.10'
+dependencies = [
+    'asyncpg>=0.30.0',
+    'fastmcp>=2.0.0',
+    'python-dotenv>=1.0.0',
+    'sqlalchemy[asyncio]>=2.0.49',
+]

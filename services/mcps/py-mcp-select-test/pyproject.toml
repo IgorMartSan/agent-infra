@@ -1,0 +1,10 @@
+[project]
+name = 'py-mcp-select-test'
+version = '0.1.0'
+description = 'MCP com tool de select no PostgreSQL (tabelas e estrutura)'
+requires-python = '>=3.10'
+dependencies = [
+    'asyncpg>=0.30.0',
+    'fastmcp>=2.0.0',
+    'python-dotenv>=1.0.0',
+]
