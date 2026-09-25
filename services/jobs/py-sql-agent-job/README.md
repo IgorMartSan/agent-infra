@@ -1,61 +1,15 @@
-# Gemma 4 Agent Job
+# SQL Agent Job
 
-Worker baseado no `py-simple-agent-job` que consome mensagens do RabbitMQ, executa o modelo local Gemma 4 por meio de LangChain e publica a resposta no Redis Pub/Sub.
+Worker SQL independente que serviu de base ao `argus-agent`. Ele usa `SQLDatabaseToolkit` para descobrir tabelas, ler a estrutura e responder perguntas sobre um PostgreSQL. No Compose atual o agente ativo é o [Argus no worker unificado](../py-agent-job/README.md); este job permanece disponível para execução separada.
 
-## Modelo
+`src/graph/` contém o grafo e a memória em processo; `src/infra/sql_database/` monta a conexão; `src/processor.py` valida a mensagem; `src/main.py` consome `agent.sql.requests` e publica no Redis. A conexão PostgreSQL usa `default_transaction_read_only=on` e timeout de instrução. Use também uma conta com permissões somente de leitura no banco.
 
-- API compatível com OpenAI: `http://10.247.168.43:8072/v1`
-- ID exposto pela API: `gemma4`
-- Modelo: `google/gemma-4-E4B-it-qat-w4a16-ct`
-- Família: Google Gemma 4 E4B
-- Quantização: W4A16
-- Contexto total: 4.096 tokens, compartilhado entre entrada e saída
-- Saída máxima padrão do cliente: 1.024 tokens
-- Servidor: vLLM 0.21.0
-- Entradas suportadas pelo servidor: texto, imagem e áudio
-- Saída: texto
-- Embeddings: não disponíveis
+Configure `.env` com `SQL_DATABASE_HOST/PORT/NAME/USER/PASSWORD`, `SQL_DATABASE_SCHEMA`, `OPENAI_BASE_URL/MODEL/API_KEY`, Redis e RabbitMQ. `AGENT_ID=sql-agent` usa a rota `agent.sql`. O Argus utiliza o mesmo `.env` local no Compose, mas a própria fila e ID.
 
-O gateway atual recebe `message` como texto. O modelo suporta conteúdo multimodal, mas o contrato do gateway precisará ser ampliado antes de imagens ou áudio chegarem a este worker.
+~~~powershell
+cd services/jobs/py-sql-agent-job
+uv sync --frozen
+uv run pytest tests
+~~~
 
-## Fluxo
-
-1. O gateway recebe uma mensagem para `gemma4-agent`.
-2. A chave `agent.gemma4` encaminha a mensagem à fila `agent.gemma4.requests`.
-3. O worker executa um `ChatOpenAI` apontando para a API local.
-4. A resposta é publicada em `chat:response:{application_id}:{conversation_id}`.
-5. O frontend recebe o evento pelo stream SSE.
-
-## Configuração
-
-Copie `.env.example` para `.env` para executar o worker fora do Docker.
-
-Variáveis principais:
-
-| Variável | Padrão | Descrição |
-| --- | --- | --- |
-| `AGENT_ID` | `gemma4-agent` | Identificador usado pelo gateway |
-| `RABBITMQ_QUEUE` | `agent.gemma4.requests` | Fila exclusiva do agente |
-| `RABBITMQ_ROUTING_KEY` | `agent.gemma4` | Chave de roteamento |
-| `OPENAI_BASE_URL` | `http://10.247.168.43:8072/v1` | URL base compatível com OpenAI |
-| `OPENAI_API_KEY` | `EMPTY` | Valor exigido pelo cliente; o servidor não autentica |
-| `OPENAI_MODEL` | `gemma4` | Nome publicado por `/v1/models` |
-| `OPENAI_MAX_TOKENS` | `1024` | Limite máximo padrão da resposta |
-| `OPENAI_TIMEOUT_SECONDS` | `120` | Timeout de inferência |
-
-`RABBITMQ_PREFETCH_COUNT=1` mantém apenas uma mensagem em processamento por instância, de acordo com a capacidade atual do servidor.
-
-## Desenvolvimento
-
-```powershell
-uv sync
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-```
-
-Teste direto do modelo:
-
-```powershell
-uv run python src/test_main.py
-```
+[Documentação adicional](DOCUMENTACAO.md) descreve o formato do payload e os limites da conexão.

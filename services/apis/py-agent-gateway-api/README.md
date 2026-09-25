@@ -1,57 +1,33 @@
 # Agent Gateway API
 
-## Descrição
-API FastAPI responsável por receber mensagens de diferentes aplicações e encaminhá-las para processamento assíncrono através do RabbitMQ. Atua como gateway centralizado para comunicação com agentes de IA.
+Gateway FastAPI que recebe texto em `POST /api/v1/messages` e publica no exchange RabbitMQ `agent.requests`. `GET /api/v1/agents` lista agentes com heartbeat ativo no Redis; `GET /` responde a uma checagem simples sem depender do broker.
 
-## Responsabilidades
-- Receber mensagens de aplicações clientes
-- Publicar mensagens no RabbitMQ para processamento assíncrono
-- Retornar confirmação imediata após aceitar a mensagem
-- Gerenciar conexões com RabbitMQ
+## Mensagens
 
-## Contrato de Entrada
-
-### Endpoint: `POST /api/v1/messages`
-
-**Request Body:**
-```json
+~~~json
 {
-  "application_id": "string",        // Identificador da aplicação de origem (ex: "erp")
-  "user_id": "string?",              // Identificador do usuário na aplicação origem
-  "chat_id": "string?",              // Identificador do chat/conversa
-  "agent_id": "string",              // Identificador do agente que processará a mensagem
-  "message": "string",               // Conteúdo enviado para o agente
-  "metadata": "object?",             // Metadados opcionais da aplicação origem
-  "delivery": {                      // Configuração de entrega da resposta
-    "type": "WEBSOCKET | HTTP | GOOGLE_CHAT | NONE",
-    "target": "string?",             // Destino lógico para entregas HTTP
-    "channel": "string?",            // Canal para entrega via WebSocket
-    "space_id": "string?"            // Identificador do espaço do Google Chat
-  }
+  "application_id": "erp",
+  "user_id": "usuario-1",
+  "chat_id": "conversa-1",
+  "agent_id": "argus-agent",
+  "message": "Quais tabelas existem?",
+  "delivery": {"type": "NONE"}
 }
-```
+~~~
 
-## Contrato de Saída
+O gateway responde `202` com `message_id` e `status: ACCEPTED` após a confirmação do RabbitMQ. Retorna `409` se a conversa já tem uma mensagem em processamento, `503` se o agente não está ativo, a fila está cheia ou a infraestrutura está indisponível, e `422` para payload inválido. `delivery` aceita `NONE`, `HTTP`, `WEBSOCKET` e `GOOGLE_CHAT` no contrato, mas o caminho ativo entrega as respostas pelo Redis/SSE.
 
-**Response (202 Accepted):**
-```json
-{
-  "message_id": "uuid",              // Identificador único da mensagem
-  "status": "ACCEPTED"               // Status inicial da mensagem
-}
-```
+O roteamento segue `agent_id`: `argus-agent` usa `agent.argus` e a fila `agent.argus.requests`. O worker cria o binding da sua fila. O gateway verifica a profundidade da fila e segura um lock Redis por aplicação, chat e agente até o worker publicar a resposta.
 
-**Respostas de Erro:**
-- `422`: Payload inválido
-- `503`: RabbitMQ indisponível
+## Código e configuração
 
-## Endpoints Adicionais
-- `GET /` - Verificar status da API
-- `GET /docs` - Documentação Swagger UI
-- `GET /redoc` - Documentação ReDoc
+`src/routers/` define os endpoints, `src/schemas/` os contratos, `src/service/` coordena a entrada, `src/infra/` contém os clientes Redis/RabbitMQ e `src/dependencies.py` cria e fecha os clientes por requisição. A conexão RabbitMQ por requisição evita reutilizar canais ociosos encerrados pelo broker.
 
-## Tecnologias
-- FastAPI
-- RabbitMQ (Pika)
-- Pydantic
-- Uvicorn
+O Compose expõe a API na porta 8000 e carrega `.env` do serviço. Ajuste `RABBITMQ_*`, `REDIS_*`, `CONVERSATION_LOCK_TTL_SECONDS` e `QUEUE_MAX_MESSAGES` conforme o ambiente. `GET /docs` abre o OpenAPI.
+
+~~~powershell
+cd services/apis/py-agent-gateway-api
+uv sync --frozen
+uv run pytest tests
+uv run ruff check src tests
+~~~

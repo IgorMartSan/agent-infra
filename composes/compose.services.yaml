@@ -1,3 +1,23 @@
+# A mesma imagem executa um agente por processo, selecionado por AGENT_ID.
+x-agent-worker: &agent-worker
+  build:
+    context: ..
+    dockerfile: services/jobs/py-agent-job/Dockerfile
+  restart: unless-stopped
+  environment:
+    RABBITMQ_HOST: rabbitmq
+    RABBITMQ_USER: ${RABBITMQ_USER}
+    RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    REDIS_HOST: redis
+    REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - agent_platform_network
+
 services:
   py-agent-gateway-api:
     build:
@@ -15,13 +35,19 @@ services:
       RABBITMQ_USER: admin
       RABBITMQ_PASSWORD: admin123
       RABBITMQ_VHOST: /
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - agent_platform_network
 
+  # Referência independente; habilitar apenas quando agent-simple estiver parado.
   worker-agent:
+    profiles: ["legacy"]
     build:
       context: ..
       dockerfile: services/jobs/py-simple-agent-job/Dockerfile
@@ -36,99 +62,30 @@ services:
     networks:
       - agent_platform_network
 
-  worker-gemma4-agent:
-    build:
-      context: ..
-      dockerfile: services/jobs/py-gemma4-agent-job/Dockerfile
-    container_name: worker-gemma4-agent
-    restart: unless-stopped
-    environment:
-      AGENT_ID: gemma4-agent
-      LOG_LEVEL: INFO
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: admin
-      RABBITMQ_PASSWORD: admin123
-      RABBITMQ_VHOST: /
-      RABBITMQ_EXCHANGE: agent.requests
-      RABBITMQ_QUEUE: agent.gemma4.requests
-      RABBITMQ_ROUTING_KEY: agent.gemma4
-      RABBITMQ_PREFETCH_COUNT: 1
-      RABBITMQ_CONNECTION_ATTEMPTS: 1
-      RABBITMQ_RETRY_DELAY: 1
-      RABBITMQ_SOCKET_TIMEOUT: 5
-      RABBITMQ_RECONNECT_DELAY: 3
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      REDIS_PASSWORD: ""
-      REDIS_RESPONSE_CHANNEL_PREFIX: chat:response
-      OPENAI_BASE_URL: http://10.247.168.43:8072/v1
-      OPENAI_API_KEY: EMPTY
-      OPENAI_MODEL: gemma4
-      OPENAI_TEMPERATURE: 0.2
-      OPENAI_MAX_TOKENS: 1024
-      OPENAI_TIMEOUT_SECONDS: 120
-      OPENAI_MAX_RETRIES: 2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - agent_platform_network
-
-  worker-sql-agent:
-    build:
-      context: ..
-      dockerfile: services/jobs/py-sql-agent-job/Dockerfile
-    container_name: worker-sql-agent
-    restart: unless-stopped
-    env_file:
-      - ../services/jobs/py-sql-agent-job/.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - agent_platform_network
-
   agent-rsa:
-    build:
-      context: ..
-      dockerfile: services/jobs/py-agent-job/Dockerfile
+    <<: *agent-worker
     container_name: agent-rsa
-    restart: unless-stopped
-    # Infra compartilhada (.env raiz) + config específica do agente (.env.rsa)
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres-vector:
+        condition: service_healthy
     env_file:
-      - ../.env
       - ../services/jobs/py-agent-job/.env.rsa
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - agent_platform_network
 
-  agent-sql:
-    build:
-      context: ..
-      dockerfile: services/jobs/py-agent-job/Dockerfile
-    container_name: agent-sql
-    restart: unless-stopped
-    # Infra compartilhada (.env raiz) + config específica do agente (.env.sql)
+  agent-simple:
+    <<: *agent-worker
+    container_name: agent-simple
     env_file:
-      - ../.env
-      - ../services/jobs/py-agent-job/.env.sql
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - agent_platform_network
+      - ../services/jobs/py-agent-job/.env.simple
+
+  agent-argus:
+    <<: *agent-worker
+    container_name: agent-argus
+    env_file:
+      - ../services/jobs/py-agent-job/.env.argus
 
   chatbot-next:
     build:

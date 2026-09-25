@@ -1,0 +1,14 @@
+[
+  {
+    "id": "repete-mensagem",
+    "question": "Olá",
+    "reference": "Eu recebi a mensagem: Olá",
+    "mode": "contains"
+  },
+  {
+    "id": "equivalencia-de-sentido",
+    "question": "Bom dia",
+    "reference": "O Simple Agent se apresenta e confirma que recebeu a mensagem Bom dia.",
+    "mode": "semantic"
+  }
+]

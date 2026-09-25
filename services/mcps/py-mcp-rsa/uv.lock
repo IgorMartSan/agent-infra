@@ -998,7 +998,7 @@ memory = [
 ]
 
 [[package]]
-name = "py-mcp-infra-test"
+name = "py-mcp-rsa"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -37,6 +37,9 @@ class AgentRegistry:
 
     def start(self) -> None:
         """Publica o primeiro heartbeat e inicia a renovação em background."""
+        if self._thread and self._thread.is_alive():
+            return
+        self._stop_event.clear()
         self._heartbeat_once()
         self._thread = threading.Thread(
             target=self._run,

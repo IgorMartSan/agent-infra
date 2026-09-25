@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
 
-export const dynamic = "force-dynamic"
+import { apiBaseUrl } from "@/lib/chat-server"
 
-const apiBaseUrl = (
-  process.env.CHAT_API_URL ?? "http://localhost:8000"
-).replace(/\/$/, "")
+export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {

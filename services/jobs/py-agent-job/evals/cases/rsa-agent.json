@@ -1,0 +1,20 @@
+[
+  {
+    "id": "lista-tabela-accounts",
+    "question": "Liste as tabelas e colunas do banco RSA.",
+    "reference": "Tabela accounts (",
+    "mode": "contains"
+  },
+  {
+    "id": "recomenda-instalacao-camera",
+    "question": "Quero instalar câmeras.",
+    "reference": "Instalar câmera de vídeo",
+    "mode": "contains"
+  },
+  {
+    "id": "lista-servicos-do-catalogo",
+    "question": "Mostre os serviços",
+    "reference": "Lista todos os serviços ativos do catálogo, incluindo Instalar câmera de vídeo, Reparar câmera de vídeo, Projetos de Avanço Tecnológico e E2E Cancellation Test, agrupados pelo caminho das categorias e sem mostrar IDs.",
+    "mode": "semantic"
+  }
+]

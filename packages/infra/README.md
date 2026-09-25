@@ -1,14 +1,12 @@
-## Testes de integração do Redis
+# infra
 
-Os testes usam o banco Redis 15 e executam `FLUSHDB` antes e depois de cada caso.
-Inicie o Redis e execute a suíte a partir de `packages/infra`:
+Pacote de adaptadores reutilizáveis em `src/infra/`. Contém conexão e repositório Redis para agrupamento de mensagens, repositório PostgreSQL para lotes e utilitários MongoDB. O fluxo padrão do gateway, chat e workers mantém seus próprios adaptadores nos respectivos serviços; os recursos deste pacote só atuam onde são importados explicitamente.
 
-```bash
-docker compose -f ../../composes/compose.redis.yaml up -d redis
-RUN_REDIS_INTEGRATION=1 PYTHONPATH=src uv run --frozen python -m unittest discover \
-  -s tests/redis -p '*_integration.py' -v
-```
+A suite `tests/redis/test_message_group_repository_integration.py` é de integração e requer um Redis de teste separado do banco de produção. Configure `RUN_REDIS_INTEGRATION=1` e `TEST_REDIS_HOST/PORT/DB/PASSWORD`; o teste rejeita DB 0 e limpa o banco de teste antes e depois. `packages/infra/pyproject.toml` lista Redis, SQLAlchemy, psycopg2 e PyMongo como dependências.
 
-Use `TEST_REDIS_HOST`, `TEST_REDIS_PORT`, `TEST_REDIS_DB` e
-`TEST_REDIS_PASSWORD` para apontar os testes para outra instância. Por segurança,
-o banco 0 não é aceito.
+~~~powershell
+cd packages/infra
+uv run python -m unittest discover -s tests/redis -p "*_integration.py" -v
+~~~
+
+Use um `TEST_REDIS_DB` exclusivo ao ativar o teste de integração.

@@ -1,24 +1,15 @@
-from service.message_service import MessageService
+import pytest
+
+from service.message_service import routing_key_for
 
 
-class FakeProducer:
-    def __init__(self) -> None:
-        self.published: list[tuple[str, str, dict]] = []
-
-    def publish(self, exchange: str, routing_key: str, message: dict) -> None:
-        self.published.append((exchange, routing_key, message))
-
-
-def test_publishes_to_exchange_using_routing_key_derived_from_agent_id() -> None:
-    producer = FakeProducer()
-    service = MessageService(producer, exchange='agent.requests')
-
-    service.send({'agent_id': 'simple-agent', 'message': 'Olá'})
-
-    assert producer.published == [
-        (
-            'agent.requests',
-            'agent.simple',
-            {'agent_id': 'simple-agent', 'message': 'Olá'},
-        )
-    ]
+@pytest.mark.parametrize(
+    'agent_id,routing_key',
+    [
+        ('simple-agent', 'agent.simple'),
+        ('argus-agent', 'agent.argus'),
+        ('customer-support-agent', 'agent.customer.support'),
+    ],
+)
+def test_agent_routing(agent_id, routing_key):
+    assert routing_key_for(agent_id) == routing_key

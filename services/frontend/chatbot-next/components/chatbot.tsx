@@ -3,6 +3,7 @@
 import {
   type FormEvent,
   type KeyboardEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -14,10 +15,13 @@ import {
   CircleAlert,
   LoaderCircle,
   MessageSquarePlus,
+  Moon,
   Send,
   Settings2,
+  Sun,
   UserRound,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -102,6 +106,12 @@ export function Chatbot() {
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking")
   const [streamConnected, setStreamConnected] = useState(false)
 
+  const { resolvedTheme, setTheme } = useTheme()
+
+  const focusInput = useCallback(() => {
+    window.setTimeout(() => textareaRef.current?.focus(), 0)
+  }, [])
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       const storedChatId = window.sessionStorage.getItem(
@@ -169,7 +179,8 @@ export function Chatbot() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isSending])
+    focusInput()
+  }, [messages, isSending, focusInput])
 
   useEffect(() => {
     if (!chatId.trim()) return
@@ -297,7 +308,7 @@ export function Chatbot() {
       ])
     } finally {
       setIsSending(false)
-      window.setTimeout(() => textareaRef.current?.focus(), 0)
+      focusInput()
     }
   }
 
@@ -329,7 +340,7 @@ export function Chatbot() {
         createdAt: currentTime(),
       },
     ])
-    window.setTimeout(() => textareaRef.current?.focus(), 0)
+    focusInput()
   }
 
   const statusLabel =
@@ -378,15 +389,32 @@ export function Chatbot() {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={startNewChat}
-          >
-            <MessageSquarePlus data-icon="inline-start" />
-            <span className="hidden sm:inline">Nova conversa</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() =>
+                setTheme(resolvedTheme === "dark" ? "light" : "dark")
+              }
+              aria-label="Alternar tema"
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun className="size-4" />
+              ) : (
+                <Moon className="size-4" />
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={startNewChat}
+            >
+              <MessageSquarePlus data-icon="inline-start" />
+              <span className="hidden sm:inline">Nova conversa</span>
+            </Button>
+          </div>
         </header>
 
         <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>

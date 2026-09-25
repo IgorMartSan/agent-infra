@@ -2,17 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY services/frontend/chatbot-next/package.json ./package.json
 COPY services/frontend/chatbot-next/package-lock.json ./package-lock.json
 
-RUN npm ci --include=dev
+RUN npm ci
 
 COPY services/frontend/chatbot-next/ ./
 
 RUN npm run build
+
+ENV NODE_ENV=production
 
 EXPOSE 3000
 

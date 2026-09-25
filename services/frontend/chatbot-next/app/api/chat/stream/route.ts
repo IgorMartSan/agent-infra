@@ -1,13 +1,9 @@
 import { createClient } from "redis"
 
+import { redisUrl } from "@/lib/chat-server"
+
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
-
-const redisUrl =
-  process.env.CHAT_REDIS_URL ??
-  (process.env.NODE_ENV === "production"
-    ? "redis://redis:6379/0"
-    : "redis://localhost:6380/0")
 
 function encodeChannelPart(value: string) {
   return encodeURIComponent(value).replace(
@@ -47,24 +43,24 @@ export async function GET(request: Request) {
   let heartbeat: ReturnType<typeof setInterval> | undefined
   let closed = false
 
+  async function close() {
+    if (closed) return
+    closed = true
+
+    if (heartbeat) clearInterval(heartbeat)
+
+    try {
+      if (subscriber.isOpen) {
+        await subscriber.unsubscribe(channel)
+        await subscriber.quit()
+      }
+    } catch {
+      subscriber.destroy()
+    }
+  }
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      async function close() {
-        if (closed) return
-        closed = true
-
-        if (heartbeat) clearInterval(heartbeat)
-
-        try {
-          if (subscriber.isOpen) {
-            await subscriber.unsubscribe(channel)
-            await subscriber.quit()
-          }
-        } catch {
-          subscriber.destroy()
-        }
-      }
-
       request.signal.addEventListener("abort", () => void close(), {
         once: true,
       })
@@ -84,20 +80,7 @@ export async function GET(request: Request) {
         controller.error(new Error("Falha ao assinar o canal de respostas."))
       }
     },
-    async cancel() {
-      if (closed) return
-      closed = true
-      if (heartbeat) clearInterval(heartbeat)
-
-      try {
-        if (subscriber.isOpen) {
-          await subscriber.unsubscribe(channel)
-          await subscriber.quit()
-        }
-      } catch {
-        subscriber.destroy()
-      }
-    },
+    cancel: close,
   })
 
   return new Response(stream, {

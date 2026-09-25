@@ -1,3 +1,3 @@
-from fastmcp import FastMCP
+from main import mcp
 
-mcp = FastMCP(name='DB Infra MCP')
+__all__ = ["mcp"]

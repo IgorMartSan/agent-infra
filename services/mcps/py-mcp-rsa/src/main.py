@@ -1,6 +1,13 @@
-import tools  # noqa: F401 (registra as tools no mcp)
+import sys
+from fastmcp import FastMCP
 
-from server import mcp
+mcp = FastMCP(name='DB Infra MCP')
+
+# Disponibiliza a instância mcp para módulos que importam de 'server' ou 'main'
+sys.modules['server'] = sys.modules[__name__]
+sys.modules['main'] = sys.modules[__name__]
+
+from tools import catalog_service_tool
 
 if __name__ == '__main__':
     mcp.run()

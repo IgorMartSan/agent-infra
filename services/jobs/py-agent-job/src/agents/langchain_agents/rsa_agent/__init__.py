@@ -1,1 +1,0 @@
-"""Agente RSA: especialista em consultar dados estruturados do banco RSA via MCP tools."""

@@ -1,0 +1,57 @@
+﻿id,question,reference,mode,executado_em_utc,status,pergunta,referencia,resposta,modo,correcao_factual,completude,relevancia,aderencia_instrucoes,clareza,nota_media,tempo_segundos,motivo,sugestao_correcao,erro
+lista-tabela-accounts,Liste as tabelas e colunas do banco RSA.,Tabela accounts (,contains,2026-09-25 18:29:37,REPROVADO,Liste as tabelas e colunas do banco RSA.,Tabela accounts (,"Atualmente não consigo listar as tabelas e colunas do banco de dados do RSA. Posso, porém, ajudar com as funcionalidades disponíveis no RSA, como consultar informações e executar as ações que estão disponíveis para mim no sistema.",contains,1,0,1,0,4,1.2,3.659,"O trecho esperado não apareceu. A resposta do agente falhou em fornecer as informações solicitadas (tabelas e colunas do banco RSA), embora a resposta de referência tenha fornecido pelo menos uma tabela.","Se você não puder listar as tabelas e colunas, informe isso claramente, mas tente fornecer qualquer informação estrutural que você tenha acesso ou indique como o usuário pode obter essa informação.",
+recomenda-instalacao-camera,Quero instalar câmeras.,Instalar câmera de vídeo,contains,2026-09-25 18:29:41,REPROVADO,Quero instalar câmeras.,Instalar câmera de vídeo,"Para te ajudar com a instalação de câmeras, preciso verificar quais serviços estão disponíveis no RSA.
+
+Vou consultar o catálogo de serviços para encontrar a opção mais adequada.",contains,5,4,5,5,5,4.8,3.051,"O trecho esperado não apareceu. A resposta do agente aborda o pedido de instalação de câmeras, indicando o próximo passo lógico (verificar serviços disponíveis).",,
+lista-servicos-do-catalogo,Mostre os serviços,"Lista todos os serviços ativos do catálogo, incluindo Instalar câmera de vídeo, Reparar câmera de vídeo, Projetos de Avanço Tecnológico e E2E Cancellation Test, agrupados pelo caminho das categorias e sem mostrar IDs.",semantic,2026-09-25 18:29:44,APROVADO,Mostre os serviços,"Lista todos os serviços ativos do catálogo, incluindo Instalar câmera de vídeo, Reparar câmera de vídeo, Projetos de Avanço Tecnológico e E2E Cancellation Test, agrupados pelo caminho das categorias e sem mostrar IDs.","Serviços disponíveis no catálogo (23):
+
+Catálogo → PIMS
+- Analytics
+- Desenvolvimento/Criação
+- Manutenção
+
+Catálogo → Metrologia
+- Cadastro de Instrumentos
+
+Catálogo → Desenvolvimento Tecnológico
+- Correção de falhas
+- Solicitar nova aplicação
+- Solicitar nova funcionalidade
+
+Catálogo → Aplicações → Nível 2
+- Correções de falhas
+- Solicitar demandas
+
+Catálogo
+- E2E Cancellation Test
+
+Catálogo → Infraestrutura → Câmeras
+- Instalar câmera de vídeo
+- Reparar câmera de vídeo
+
+Catálogo → Infraestrutura → Computadores
+- Instalar computador
+- Reparar computador e/ou acessórios
+
+Catálogo → Infraestrutura → Redes
+- Instalar rede de Automação
+- Reparar rede de automação
+
+Catálogo → Infraestrutura → Servidores e Virtualização
+- Instalar servidor / máquina virtual
+- Reparar servidor / máquina virtual
+
+Catálogo → Desenvolvimento Tecnológico → Visão Computacional
+- POC Visão Computacional
+
+Catálogo → Automatismo
+- Projetos de Avanço Tecnológico
+
+Catálogo → Infraestrutura → Serviços diversos
+- Serviços diversos
+
+Catálogo → Aplicações
+- Solicitação de Realização de Backup
+
+Catálogo → Aplicações → Nivel 1
+- Solicitar demandas",semantic,5,5,5,5,5,5.0,2.797,"A resposta do agente lista os serviços ativos, agrupa-os por categoria e não mostra IDs, atendendo a todos os requisitos da referência.",,

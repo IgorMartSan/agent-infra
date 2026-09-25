@@ -42,7 +42,7 @@ class RabbitMQConnection:
 
     @property
     def channel(self):
-        if not self._connection or self._connection.is_closed:
+        if not self._connection or self._connection.is_closed or not self._channel or self._channel.is_closed:
             self.connect()
 
         return self._channel

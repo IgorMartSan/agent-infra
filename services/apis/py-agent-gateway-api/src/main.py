@@ -1,20 +1,15 @@
-from contextlib import asynccontextmanager
+import os
 
 import uvicorn
 from config.logger import setup_logger
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from infra.rabbitmq.connection import rabbitmq
 from routers.agents import router as agents_router
 from routers.message import router as messages_router
 
-setup_logger()
-
-
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    yield
-    rabbitmq.close()
+load_dotenv()
+setup_logger(os.getenv('LOG_LEVEL', 'INFO'))
 
 
 app = FastAPI(
@@ -27,7 +22,6 @@ app = FastAPI(
     docs_url='/docs',
     redoc_url='/redoc',
     openapi_url='/openapi.json',
-    lifespan=lifespan,
     swagger_ui_parameters={
         'displayRequestDuration': True,
         'docExpansion': 'list',

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "resposta-curta",
+    "question": "Responda apenas OK.",
+    "reference": "OK.",
+    "mode": "semantic"
+  }
+]
