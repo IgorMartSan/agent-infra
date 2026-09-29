@@ -6,3 +6,8 @@ target-version = "py310"
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.9",
+]

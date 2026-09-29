@@ -53,11 +53,36 @@ def _is_catalog_listing(question: str) -> bool:
         char for char in unicodedata.normalize("NFKD", question.casefold()) if not unicodedata.combining(char)
     )
 
-    return plain.strip(" ?!.") in {"servicos", "catalogo"}
+    if plain.strip(" ?!.") in {"servicos", "catalogo"}:
+        return True
+    if any(word in plain for word in ("formul", "exemplo", "detalh", " para ")):
+        return False
+    return ("servicos" in plain or "catalogo" in plain) and any(
+        word in plain for word in ("quais", "list", "mostr", "todos", "disponive", "existem")
+    )
 
 
-def _catalog_listing(tool_result: object) -> str:
+def _catalog_listing(tool_result: object, question: str = "") -> str:
     services = json.loads(_message_text(tool_result))["services"]
+
+    plain_question = "".join(
+        char for char in unicodedata.normalize("NFKD", question.casefold()) if not unicodedata.combining(char)
+    )
+    categories = {
+        category
+        for service in services
+        for category in service.get("menu_path", [])[1:-1]
+        if len(category) >= 3
+    }
+    selected = [
+        category for category in categories
+        if "".join(
+            char for char in unicodedata.normalize("NFKD", category.casefold()) if not unicodedata.combining(char)
+        ) in plain_question
+    ]
+    if selected:
+        category = max(selected, key=len)
+        services = [service for service in services if category in service.get("menu_path", [])[1:-1]]
 
     if not services:
         return "Nenhum serviço ativo encontrado no catálogo."
@@ -85,18 +110,31 @@ def _catalog_listing(tool_result: object) -> str:
     return "\n".join(lines)
 
 
+def _readable_response(content: object) -> str:
+    response = _message_text(content)
+    if not response:
+        return ""
+    try:
+        result = json.loads(response)
+    except json.JSONDecodeError:
+        return response
+    if isinstance(result, dict) and isinstance(result.get("services"), list):
+        return _catalog_listing(response)
+    return response
+
+
 def _extract_response(messages: list) -> str:
     if not messages:
         raise RuntimeError("O agente RSA não retornou mensagens.")
 
-    response = _message_text(messages[-1].content)
+    response = _readable_response(messages[-1].content)
 
     if response:
         return response
 
     for message in reversed(messages):
         if isinstance(message, ToolMessage) and message.status != "error":
-            response = _message_text(message.content)
+            response = _readable_response(message.content)
 
             if response:
                 return response
@@ -137,7 +175,7 @@ async def chat_node(state: dict) -> dict:
         if _is_catalog_listing(question):
             catalog_tool = next(tool for tool in tools if tool.name == "list_services_with_done_examples")
 
-            response = _catalog_listing(await catalog_tool.ainvoke({}))
+            response = _catalog_listing(await catalog_tool.ainvoke({}), question)
 
         else:
             agent = create_agent(model=get_chat_model(), tools=tools, system_prompt=system_prompt, name="rsa-agent")

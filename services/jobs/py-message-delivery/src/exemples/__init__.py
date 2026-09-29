@@ -4,11 +4,11 @@ from .simple_agent import SimpleAgent
 from .test_agent import TestAgent
 
 __all__ = [
-    "MessageAgent",
-    "SimpleAgent",
-    "TestAgent",
     "AGENTS",
     "DEFAULT_AGENT",
     "SIMPLE_AGENT",
+    "MessageAgent",
+    "SimpleAgent",
+    "TestAgent",
     "get_agent",
 ]

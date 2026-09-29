@@ -1,5 +1,4 @@
 class DeliveryService:
-
     def __init__(self, senders):
         self._senders = senders
 
@@ -10,9 +9,7 @@ class DeliveryService:
     ) -> None:
         delivery = message['delivery']
 
-        sender = self._senders[
-            delivery['type']
-        ]
+        sender = self._senders[delivery['type']]
 
         sender.send(
             delivery=delivery,

@@ -1,3 +1,3 @@
 from fastmcp import FastMCP
 
-mcp = FastMCP(name='Test MCP')
+mcp = FastMCP(name="Test MCP")

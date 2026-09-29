@@ -30,6 +30,7 @@ line-length = 120
 
 [tool.ruff.format]
 quote-style = "double"
+skip-magic-trailing-comma = true
 
 [dependency-groups]
 dev = [

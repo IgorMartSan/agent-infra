@@ -24,10 +24,7 @@ class RabbitMQConnection:
             self._channel.confirm_delivery()
             return
 
-        credentials = pika.PlainCredentials(
-            os.environ["RABBITMQ_USER"],
-            os.environ["RABBITMQ_PASSWORD"],
-        )
+        credentials = pika.PlainCredentials(os.environ["RABBITMQ_USER"], os.environ["RABBITMQ_PASSWORD"])
         parameters = pika.ConnectionParameters(
             host=os.environ["RABBITMQ_HOST"],
             port=int(os.getenv("RABBITMQ_PORT", "5672")),

@@ -43,13 +43,15 @@ class AgentRuntime:
             )
             await checkpointer.setup()
             self.graph = self.module.build_graph(checkpointer)
+        elif hasattr(self.module, "build_graph"):
+            self.graph = self.module.build_graph()
         else:
             self.graph = self.module.graph
 
     def invoke(self, message: AgentMessage) -> str:
         try:
             thread_id = _thread_id_for(message)
-            if self.agent_id == "rsa-agent":
+            if hasattr(self.module, "invoke"):
                 response = self.runner.run(self.module.invoke(self.graph, message, thread_id))
             else:
                 state = {"message": message.message, "response": "", "thread_id": thread_id}

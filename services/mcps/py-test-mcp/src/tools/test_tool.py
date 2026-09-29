@@ -19,7 +19,6 @@ Diferença dos outros conceitos:
   - Prompt: template de mensagem (a tool executa lógica)
 """
 
-
 from server import mcp
 
 
@@ -33,4 +32,4 @@ def hello(name: str) -> str:
     Returns:
         Saudação no formato "Hello, {name}!".
     """
-    return f'Hello, {name}!'
+    return f"Hello, {name}!"

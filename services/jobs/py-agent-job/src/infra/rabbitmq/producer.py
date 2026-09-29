@@ -9,11 +9,7 @@ class RabbitMQProducer:
     def __init__(self, connection: RabbitMQConnection):
         self._connection = connection
 
-    def publish(
-        self,
-        queue: str,
-        message: dict,
-    ) -> None:
+    def publish(self, queue: str, message: dict) -> None:
         # Obtém o canal ativo da conexão com o RabbitMQ.
         # É através do channel que fazemos operações como declarar filas
         # e publicar mensagens.
@@ -22,10 +18,7 @@ class RabbitMQProducer:
         # Garante que a fila exista.
         # Se ela ainda não existir, o RabbitMQ cria.
         # durable=True faz a fila sobreviver a reinicializações do RabbitMQ.
-        channel.queue_declare(
-            queue=queue,
-            durable=True,
-        )
+        channel.queue_declare(queue=queue, durable=True)
 
         # Publica efetivamente a mensagem no RabbitMQ.
         confirmed = channel.basic_publish(

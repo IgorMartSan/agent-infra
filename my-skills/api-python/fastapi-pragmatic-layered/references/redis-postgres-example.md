@@ -172,9 +172,7 @@ class PostgresUserRepository:
             return dict(result.mappings().one())
 
     async def get(self, user_id: str) -> dict[str, object] | None:
-        statement = text(
-            "SELECT id::text, name, email FROM users WHERE id = :id"
-        )
+        statement = text("SELECT id::text, name, email FROM users WHERE id = :id")
         async with self._session_factory() as session:
             result = await session.execute(statement, {"id": user_id})
             row = result.mappings().one_or_none()

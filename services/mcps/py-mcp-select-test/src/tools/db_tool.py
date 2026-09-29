@@ -7,12 +7,11 @@ A connection string é lida do .env e montada a partir das variáveis:
 import os
 
 from dotenv import load_dotenv
-
 from server import mcp
 
 load_dotenv()
 
-SELECT_SQL = '''
+SELECT_SQL = """
 SELECT
     t.table_schema,
     t.table_name,
@@ -33,23 +32,23 @@ WHERE t.table_schema = $1
     AND t.table_type = 'BASE TABLE'
 GROUP BY t.table_schema, t.table_name
 ORDER BY t.table_name;
-'''
+"""
 
 
 def _get_connection_kwargs() -> dict:
     """Monta os parâmetros de conexão a partir das variáveis do .env."""
     required = {
-        'host': os.getenv('DB_HOST', '127.0.0.1'),
-        'port': int(os.getenv('DB_PORT', '5432')),
-        'database': os.getenv('DB_NAME', 'rsa'),
-        'user': os.getenv('DB_USER', 'rsa'),
-        'password': os.getenv('DB_PASSWORD', 'rsa'),
+        "host": os.getenv("DB_HOST", "127.0.0.1"),
+        "port": int(os.getenv("DB_PORT", "5432")),
+        "database": os.getenv("DB_NAME", "rsa"),
+        "user": os.getenv("DB_USER", "rsa"),
+        "password": os.getenv("DB_PASSWORD", "rsa"),
     }
     return required
 
 
 def _schema() -> str:
-    return os.getenv('DB_SCHEMA', 'public')
+    return os.getenv("DB_SCHEMA", "public")
 
 
 async def _run_query() -> list[tuple]:
@@ -79,4 +78,4 @@ async def list_tables() -> str:
     for row in rows:
         lines.append(f"Tabela {row['table_name']} ({row['column_count']} colunas):\n  {row['columns']}")
 
-    return '\n\n'.join(lines)
+    return "\n\n".join(lines)

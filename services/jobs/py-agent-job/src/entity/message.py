@@ -33,12 +33,7 @@ class AgentMessage:
             raise InvalidMessageError(f"Campo obrigatório ausente: {error.args[0]}") from error
         if not all(
             isinstance(value, str) and value.strip()
-            for value in (
-                message.application_id,
-                message.message_id,
-                message.agent_id,
-                message.message,
-            )
+            for value in (message.application_id, message.message_id, message.agent_id, message.message)
         ):
             raise InvalidMessageError("IDs obrigatórios e texto da mensagem devem ser strings não vazias.")
         return message

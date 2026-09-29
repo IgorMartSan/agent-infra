@@ -64,10 +64,7 @@ def run() -> None:
         "agent_id": payload.get("agent_id"),
         "content": response,
     }
-    canal = (
-        f"{os.environ['REDIS_RESPONSE_CHANNEL_PREFIX']}:"
-        f"{payload.get('application_id')}:{payload.get('chat_id')}"
-    )
+    canal = f"{os.environ['REDIS_RESPONSE_CHANNEL_PREFIX']}:{payload.get('application_id')}:{payload.get('chat_id')}"
     subscribers = redis_client.publish(canal, json.dumps(event, ensure_ascii=False))
     print(f"3. Publicado no canal {canal} ({subscribers} inscrito(s)).")
 

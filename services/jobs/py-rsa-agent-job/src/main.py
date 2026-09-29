@@ -61,9 +61,7 @@ def run_worker() -> None:
         redis_connection.get_client(),
         agent_id,
         ttl_seconds=int(os.environ.get("AGENT_HEARTBEAT_TTL_SECONDS", "30")),
-        interval_seconds=float(
-            os.environ.get("AGENT_HEARTBEAT_INTERVAL_SECONDS", "10")
-        ),
+        interval_seconds=float(os.environ.get("AGENT_HEARTBEAT_INTERVAL_SECONDS", "10")),
     )
     agent_registry.start()
 
@@ -147,9 +145,7 @@ def run_worker() -> None:
                     exchange=exchange,
                     routing_key=routing_key,
                     prefetch_count=prefetch_count,
-                    should_requeue=lambda exc: not isinstance(
-                        exc, (InvalidMessageError, AgentProcessingError)
-                    ),
+                    should_requeue=lambda exc: not isinstance(exc, (InvalidMessageError, AgentProcessingError)),
                 )
             except Exception:
                 logger.exception(

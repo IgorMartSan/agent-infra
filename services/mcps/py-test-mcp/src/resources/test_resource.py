@@ -23,13 +23,13 @@ from server import mcp
 
 # Dado fake que "estaria" em banco ou arquivo de config
 APP_CONFIG = {
-    'app_name': 'Test MCP',
-    'version': '0.1.0',
-    'database_url': 'postgresql://user:pass@localhost:5432/app',
+    "app_name": "Test MCP",
+    "version": "0.1.0",
+    "database_url": "postgresql://user:pass@localhost:5432/app",
 }
 
 
-@mcp.resource('config://app')
+@mcp.resource("config://app")
 def get_app_config() -> str:
     """Expõe a configuração da aplicação.
 
@@ -42,7 +42,7 @@ def get_app_config() -> str:
     return json.dumps(APP_CONFIG, indent=2)
 
 
-@mcp.resource('data://users/{user_id}')
+@mcp.resource("data://users/{user_id}")
 def get_user_profile(user_id: int) -> str:
     """Expõe o perfil de um usuário, com URI parametrizada.
 
@@ -54,4 +54,4 @@ def get_user_profile(user_id: int) -> str:
     parâmetros dinâmicos.
     """
     # Aqui haveria uma consulta ao banco; simulamos a resposta
-    return f'Usuário {user_id}: Igor (igor@example.com)'
+    return f"Usuário {user_id}: Igor (igor@example.com)"

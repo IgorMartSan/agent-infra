@@ -24,15 +24,19 @@ load_dotenv()
 
 def _build_database_url() -> URL:
     """Monta a URL de conexão para asyncpg a partir das variáveis do .env."""
-    host = os.getenv('DB_HOST', '127.0.0.1')
-    port = os.getenv('DB_PORT', '5432')
-    name = os.getenv('DB_NAME') or os.getenv('DB_DATABASE', 'rsa')
-    user = os.getenv('DB_USER') or os.getenv('DB_USERNAME', 'rsa')
-    password = os.getenv('DB_PASSWORD', 'rsa')
+    host = os.getenv("DB_HOST", "127.0.0.1")
+    port = os.getenv("DB_PORT", "5432")
+    name = os.getenv("DB_NAME") or os.getenv("DB_DATABASE", "rsa")
+    user = os.getenv("DB_USER") or os.getenv("DB_USERNAME", "rsa")
+    password = os.getenv("DB_PASSWORD", "rsa")
     # asyncpg usa o driver postgresql+asyncpg
     return URL.create(
-        'postgresql+asyncpg', username=user, password=password,
-        host=host, port=int(port), database=name,
+        "postgresql+asyncpg",
+        username=user,
+        password=password,
+        host=host,
+        port=int(port),
+        database=name,
     )
 
 

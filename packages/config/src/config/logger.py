@@ -40,7 +40,7 @@ def setup_logger(level: str = "DEBUG") -> None:
             "%(asctime)s | "
             "%(levelname)-8s | "
             "%(filename)s:%(lineno)d | "
-           # "%(funcName)s | "
+            # "%(funcName)s | "
             "%(message)s"
         ),
         handlers=[

@@ -47,11 +47,7 @@ class ChatMessageGroupRepository:
         )
 
     def _parse_identity_member(self, raw_member: bytes | str) -> dict[str, str] | None:
-        normalized = (
-            raw_member.decode("utf-8")
-            if isinstance(raw_member, bytes)
-            else str(raw_member)
-        )
+        normalized = raw_member.decode("utf-8") if isinstance(raw_member, bytes) else str(raw_member)
         try:
             identity = json.loads(normalized)
         except json.JSONDecodeError:
@@ -59,10 +55,7 @@ class ChatMessageGroupRepository:
         if not isinstance(identity, dict):
             return None
 
-        values = {
-            field: str(identity.get(field, "")).strip()
-            for field in ("user_id", "chat_id", "agent_id")
-        }
+        values = {field: str(identity.get(field, "")).strip() for field in ("user_id", "chat_id", "agent_id")}
         return values if all(values.values()) else None
 
     def _buffer_key(self, user_id: str, chat_id: str, agent_id: str) -> str:
@@ -79,11 +72,7 @@ class ChatMessageGroupRepository:
         return json.dumps(payload, ensure_ascii=False)
 
     def _deserialize_payload(self, raw_message: bytes | str) -> dict[str, Any]:
-        normalized = (
-            raw_message.decode("utf-8")
-            if isinstance(raw_message, bytes)
-            else str(raw_message)
-        )
+        normalized = raw_message.decode("utf-8") if isinstance(raw_message, bytes) else str(raw_message)
         try:
             parsed = json.loads(normalized)
         except json.JSONDecodeError:
@@ -126,12 +115,15 @@ class ChatMessageGroupRepository:
                 o limite de frequência ou de mensagens pendentes.
             RedisError: Se o Redis falhar ao verificar ou armazenar a mensagem.
         """
-        if min(
-            max_pending_messages,
-            rate_limit_messages,
-            rate_limit_window_seconds,
-            block_seconds,
-        ) <= 0:
+        if (
+            min(
+                max_pending_messages,
+                rate_limit_messages,
+                rate_limit_window_seconds,
+                block_seconds,
+            )
+            <= 0
+        ):
             raise ValueError("Os limites de mensagens devem ser maiores que zero")
 
         user_id = str(user_id).strip()
@@ -411,24 +403,17 @@ class ChatMessageGroupRepository:
             if not raw_messages:
                 identity_member = self._identity_member(user_id, chat_id, agent_id)
                 await self.redis.zrem(self.index_key, identity_member)
-                await self.release_message_group(
-                    user_id, chat_id, agent_id, lock_token
-                )
+                await self.release_message_group(user_id, chat_id, agent_id, lock_token)
                 return None
 
-            messages = [
-                self._deserialize_payload(raw_message)
-                for raw_message in raw_messages
-            ]
+            messages = [self._deserialize_payload(raw_message) for raw_message in raw_messages]
             return {
                 "user_id": user_id,
                 "chat_id": chat_id,
                 "agent_id": agent_id,
                 "messages": messages,
                 "message_count": len(messages),
-                "full_text": "\n".join(
-                    str(message.get("message", "")) for message in messages
-                ),
+                "full_text": "\n".join(str(message.get("message", "")) for message in messages),
                 "lock_token": lock_token,
             }
         except RedisError:

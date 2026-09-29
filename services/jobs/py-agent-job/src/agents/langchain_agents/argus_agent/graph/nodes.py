@@ -79,10 +79,7 @@ def receive_message(state: AgentState) -> dict:
 
     try:
         for attempt in range(2):
-            result = agent.invoke(
-                {"messages": [{"role": "user", "content": state["message"]}]},
-                config=config,
-            )
+            result = agent.invoke({"messages": [{"role": "user", "content": state["message"]}]}, config=config)
             last_message = result["messages"][-1]
             response = _message_text(last_message.content).strip()
             if response:
@@ -100,10 +97,7 @@ def receive_message(state: AgentState) -> dict:
 
             fallback = _answer_from_tool_results(result["messages"], state["message"])
             if fallback:
-                agent.update_state(
-                    config,
-                    {"messages": [AIMessage(id=last_message.id, content=fallback)]},
-                )
+                agent.update_state(config, {"messages": [AIMessage(id=last_message.id, content=fallback)]})
                 trim_history(agent, config)
                 return {"response": fallback}
 

@@ -71,9 +71,7 @@ def describe_database_tables(table_names: list[str]) -> str:
     try:
         inspector = inspect(get_database_engine())
         schema = _schema()
-        available = set(inspector.get_table_names(schema=schema)) | set(
-            inspector.get_view_names(schema=schema)
-        )
+        available = set(inspector.get_table_names(schema=schema)) | set(inspector.get_view_names(schema=schema))
         descriptions: dict[str, Any] = {}
 
         for table_name in table_names:
@@ -90,9 +88,7 @@ def describe_database_tables(table_names: list[str]) -> str:
                     }
                     for column in inspector.get_columns(table_name, schema=schema)
                 ],
-                "primary_key": inspector.get_pk_constraint(table_name, schema=schema).get(
-                    "constrained_columns", []
-                ),
+                "primary_key": inspector.get_pk_constraint(table_name, schema=schema).get("constrained_columns", []),
                 "foreign_keys": inspector.get_foreign_keys(table_name, schema=schema),
             }
 

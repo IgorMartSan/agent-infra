@@ -64,9 +64,10 @@ class CatalogServiceToolTest(unittest.TestCase):
         self.assertEqual([field["label"] for field in result[0]["form"]], ["Necessidade", "Necessidade"])
         self.assertEqual(result[0]["form"][0]["options"], ["Argus", "RSA", "Outro"])
         self.assertEqual(result[0]["menu_path"], ["Catálogo", "Infraestrutura", "Câmeras", "Serviço 1"])
-        self.assertEqual([item["request_name"] for item in result[0]["examples"]], [
-            "Solicitação 1", "Solicitação 2", "Solicitação 3"
-        ])
+        self.assertEqual(
+            [item["request_name"] for item in result[0]["examples"]],
+            ["Solicitação 1", "Solicitação 2", "Solicitação 3"],
+        )
         self.assertEqual(len(result[1]["examples"]), 2)
         self.assertIsNone(result[1]["category"])
         self.assertEqual(result[1]["menu_path"], ["Catálogo", "Serviço 2"])

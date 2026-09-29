@@ -1,12 +1,9 @@
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine, URL
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
-
-if TYPE_CHECKING:
-    from langchain_community.utilities import SQLDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -92,8 +89,6 @@ class PostgresConnection:
         try:
             from langchain_community.utilities import SQLDatabase
         except ImportError as exc:
-            raise RuntimeError(
-                "langchain-community is required to use get_sql_database()"
-            ) from exc
+            raise RuntimeError("langchain-community is required to use get_sql_database()") from exc
 
         return SQLDatabase(self._engine)

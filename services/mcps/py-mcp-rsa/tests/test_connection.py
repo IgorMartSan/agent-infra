@@ -18,9 +18,8 @@ class DatabaseUrlTest(unittest.TestCase):
             "DB_USERNAME": "reader",
             "DB_PASSWORD": "example",
         }
-        with patch.dict(os.environ, values):
-            with patch.dict(os.environ, {"DB_NAME": "", "DB_USER": ""}):
-                url = _build_database_url()
+        with patch.dict(os.environ, values), patch.dict(os.environ, {"DB_NAME": "", "DB_USER": ""}):
+            url = _build_database_url()
         self.assertEqual(url.database, "rsa_test")
         self.assertEqual(url.username, "reader")
         self.assertEqual(url.host, "127.0.0.1")

@@ -53,9 +53,7 @@ class ChatMessageGroupRepositoryIntegrationTest(unittest.IsolatedAsyncioTestCase
         self.assertIn("pendentes", str(raised.exception))
         self.assertGreater(raised.exception.retry_after_seconds, 0)
         self.assertEqual(
-            await self.connection.get_client().llen(
-                "chat:buffer:user-1:chat-1:agent1"
-            ),
+            await self.connection.get_client().llen("chat:buffer:user-1:chat-1:agent1"),
             10,
         )
 
@@ -76,9 +74,7 @@ class ChatMessageGroupRepositoryIntegrationTest(unittest.IsolatedAsyncioTestCase
 
         self.assertIn("Frequência", str(raised.exception))
         self.assertEqual(
-            await self.connection.get_client().llen(
-                "chat:buffer:user-1:chat-1:agent1"
-            ),
+            await self.connection.get_client().llen("chat:buffer:user-1:chat-1:agent1"),
             3,
         )
 
@@ -99,9 +95,7 @@ class ChatMessageGroupRepositoryIntegrationTest(unittest.IsolatedAsyncioTestCase
         self.assertEqual(results.count("accepted"), 10)
         self.assertEqual(results.count("blocked"), 10)
         self.assertEqual(
-            await self.connection.get_client().llen(
-                "chat:buffer:user-1:chat-1:agent1"
-            ),
+            await self.connection.get_client().llen("chat:buffer:user-1:chat-1:agent1"),
             10,
         )
 
@@ -188,9 +182,7 @@ class ChatMessageGroupRepositoryIntegrationTest(unittest.IsolatedAsyncioTestCase
 
         self.assertFalse(acknowledged)
         self.assertEqual(
-            await self.connection.get_client().llen(
-                "chat:buffer:user-1:chat-1:agent1"
-            ),
+            await self.connection.get_client().llen("chat:buffer:user-1:chat-1:agent1"),
             1,
         )
 

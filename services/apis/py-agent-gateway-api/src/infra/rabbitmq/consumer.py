@@ -6,7 +6,6 @@ from infra.rabbitmq.connection import RabbitMQConnection
 
 
 class RabbitMQConsumer:
-
     def __init__(self, connection: RabbitMQConnection):
         # Recebe a conexão pronta por injeção de dependência.
         self._connection = connection
@@ -36,7 +35,6 @@ class RabbitMQConsumer:
         # Registra a função que será executada quando uma mensagem chegar.
         channel.basic_consume(
             queue=queue,
-
             # Função chamada pelo RabbitMQ quando uma mensagem é entregue.
             on_message_callback=lambda ch, method, properties, body: self._handle_message(
                 ch,
@@ -45,7 +43,6 @@ class RabbitMQConsumer:
                 body,
                 callback,
             ),
-
             # False significa que o RabbitMQ espera um ACK explícito.
             # A mensagem não é considerada concluída automaticamente.
             auto_ack=False,

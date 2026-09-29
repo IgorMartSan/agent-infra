@@ -41,11 +41,7 @@ class AgentRegistry:
             return
         self._stop_event.clear()
         self._heartbeat_once()
-        self._thread = threading.Thread(
-            target=self._run,
-            name=f"agent-heartbeat-{self._agent_id}",
-            daemon=True,
-        )
+        self._thread = threading.Thread(target=self._run, name=f"agent-heartbeat-{self._agent_id}", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:

@@ -32,7 +32,5 @@ def get_database_engine() -> Engine:
         pool_pre_ping=True,
         pool_size=1,
         max_overflow=0,
-        connect_args={
-            "options": f"-c default_transaction_read_only=on -c statement_timeout={timeout_ms}"
-        },
+        connect_args={"options": f"-c default_transaction_read_only=on -c statement_timeout={timeout_ms}"},
     )

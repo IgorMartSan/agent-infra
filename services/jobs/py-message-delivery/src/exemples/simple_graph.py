@@ -12,7 +12,7 @@ from langchain_core.messages import (
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import START, END, StateGraph
+from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 

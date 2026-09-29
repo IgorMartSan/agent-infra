@@ -12,7 +12,7 @@ class MongoConnection:
 
 
 if __name__ == "__main__":
-    self.client = MongoClient(uri: str = "mongodb://localhost:27017")
+    self.client = MongoClient("mongodb://localhost:27017")
     self.db = self.client["chat_db"]
 
     short_term_repository = ShortTermRepository(
@@ -54,19 +54,10 @@ if __name__ == "__main__":
         # 3. busca contexto de longo prazo
         contexto = long_term_repository.get(client_id=client_id) or {}
 
-        resumo = (
-            contexto.get("contexts", {})
-            .get("summary", {})
-            .get("text", "")
-        )
+        resumo = contexto.get("contexts", {}).get("summary", {}).get("text", "")
 
         # 4. monta prompt
-        prompt = [
-            {
-                "role": "system",
-                "content": f"Resumo do cliente: {resumo}"
-            }
-        ] + historico
+        prompt = [{"role": "system", "content": f"Resumo do cliente: {resumo}"}] + historico
 
         print("\nPROMPT ENVIADO PARA LLM:")
         for item in prompt:

@@ -47,6 +47,7 @@ import os
 from functools import lru_cache
 from langchain_openai import ChatOpenAI
 
+
 @lru_cache(maxsize=1)
 def get_chat_model() -> ChatOpenAI:
     return ChatOpenAI(
@@ -62,6 +63,7 @@ def get_chat_model() -> ChatOpenAI:
 ### `graph/state.py`
 ```python
 from typing import NotRequired, TypedDict
+
 
 class AgentState(TypedDict):
     message: str
@@ -139,6 +141,7 @@ graph = builder.compile()
 ### `graph/__init__.py`
 ```python
 from .graph import graph
+
 __all__ = ["graph"]
 ```
 

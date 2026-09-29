@@ -137,11 +137,9 @@ def _assemble(services_rows, form_rows, example_rows) -> dict:
     return {"services": list(services.values())}
 
 
-
 @mcp.tool(
     name="list_services_with_done_examples",
     title="Listar serviços do catálogo",
-
     description="""
     Consulta e retorna os serviços ativos disponíveis no catálogo.
 
@@ -221,7 +219,6 @@ def _assemble(services_rows, form_rows, example_rows) -> dict:
     Esta tool é somente de consulta.
     Ela não cria, altera, cancela ou exclui dados.
     """,
-
     tags={
         "service-catalog",
         "services",
@@ -292,13 +289,15 @@ async def list_services_with_done_examples() -> dict:
 
     async with session_factory() as session:
         services = (
-            await session.execute(
-                services_sql, {"menu_alias": "catalog_pt-br", "menu_url": "catalog:service_catalog"}
+            (
+                await session.execute(
+                    services_sql, {"menu_alias": "catalog_pt-br", "menu_url": "catalog:service_catalog"}
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         forms = (await session.execute(form_sql)).mappings().all()
-        examples = (
-            await session.execute(examples_sql, {"done_status": "DONE", "examples_limit": 3})
-        ).mappings().all()
+        examples = (await session.execute(examples_sql, {"done_status": "DONE", "examples_limit": 3})).mappings().all()
 
     return _assemble(services, forms, examples)

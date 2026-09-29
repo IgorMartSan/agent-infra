@@ -11,10 +11,7 @@ def checkpoint_messages(agent, config: dict) -> list[BaseMessage]:
 
 
 def replace_messages(agent, config: dict, messages: Sequence[BaseMessage]) -> None:
-    agent.update_state(
-        config,
-        {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), *messages]},
-    )
+    agent.update_state(config, {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), *messages]})
 
 
 def trim_history(agent, config: dict) -> None:

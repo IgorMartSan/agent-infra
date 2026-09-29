@@ -74,52 +74,76 @@ def test_listing_tables_returns_tool_result_instead_of_generic_model_text(monkey
 
 
 def test_full_catalog_listing_uses_every_service_and_menu_path():
-    catalog = {"services": [
-        {"name": "Instalar câmera", "menu_path": ["Catálogo", "Infraestrutura", "Câmeras", "Instalar câmera"]},
-        {"name": "Solicitar demandas", "menu_path": ["Catálogo", "Aplicações", "Nível 1", "Solicitar demandas"]},
-        {"name": "Solicitar demandas", "menu_path": ["Catálogo", "Aplicações", "Nível 2", "Solicitar demandas"]},
-    ]}
+    catalog = {
+        "services": [
+            {"name": "Instalar câmera", "menu_path": ["Catálogo", "Infraestrutura", "Câmeras", "Instalar câmera"]},
+            {"name": "Solicitar demandas", "menu_path": ["Catálogo", "Aplicações", "Nível 1", "Solicitar demandas"]},
+            {"name": "Solicitar demandas", "menu_path": ["Catálogo", "Aplicações", "Nível 2", "Solicitar demandas"]},
+        ]
+    }
     response = agent._catalog_listing([{"type": "text", "text": json.dumps(catalog)}])
 
-    assert response.count("\n- ") == 3
-    assert "Catálogo → Infraestrutura → Câmeras\n- Instalar câmera" in response
-    assert "Catálogo → Aplicações → Nível 1\n- Solicitar demandas" in response
-    assert "Catálogo → Aplicações → Nível 2\n- Solicitar demandas" in response
+    assert [line for line in response.splitlines() if line[:1].isdigit()] == [
+        "1. Instalar câmera",
+        "2. Solicitar demandas",
+        "3. Solicitar demandas",
+    ]
+    assert "Catálogo > Infraestrutura > Câmeras\n1. Instalar câmera" in response
+    assert "Catálogo > Aplicações > Nível 1\n2. Solicitar demandas" in response
+    assert "Catálogo > Aplicações > Nível 2\n3. Solicitar demandas" in response
     assert "id" not in response.casefold()
 
 
-@pytest.mark.parametrize("question", [
-    "Mostre os serviços",
-    "Quais serviços existem?",
-    "Quais são todos os serviços disponíveis no catálogo?",
-    "Quero ver o catálogo",
-    "Serviços?",
-    "Me fale os serviços",
-])
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Mostre os serviços",
+        "Quais serviços existem?",
+        "Quais são todos os serviços disponíveis no catálogo?",
+        "Quero ver o catálogo",
+        "Serviços?",
+        "Me fale os serviços",
+        "Quais os serviços do RSA?",
+        "Quais os serviços?",
+    ],
+)
 def test_general_catalog_questions_take_direct_listing_path(question):
     assert agent._is_catalog_listing(question)
 
 
-@pytest.mark.parametrize("question", [
-    "Qual serviço para instalar câmeras?",
-    "Liste os serviços de câmeras",
-    "Quais serviços do PIMS existem?",
-    "Liste os serviços e seus formulários",
-])
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Qual serviço para instalar câmeras?",
+        "Liste os serviços de câmeras",
+        "Quais serviços do PIMS existem?",
+        "Liste os serviços e seus formulários",
+    ],
+)
 def test_specific_questions_stay_with_model(question):
     assert not agent._is_catalog_listing(question)
 
 
-def test_chat_lists_catalog_without_model(monkeypatch):
+@pytest.mark.parametrize("question", ["Mostre os serviços", "Quais os serviços do RSA?", "Quais os serviços?"])
+def test_chat_lists_catalog_without_model(monkeypatch, question):
     class CatalogTool:
         name = "list_services_with_done_examples"
 
         async def ainvoke(self, payload):
             assert payload == {}
-            return [{"type": "text", "text": json.dumps({"services": [
-                {"name": "Instalar câmera", "menu_path": ["Catálogo", "Câmeras", "Instalar câmera"]},
-                {"name": "Reparar câmera", "menu_path": ["Catálogo", "Câmeras", "Reparar câmera"]},
-            ]})}]
+            return [
+                {
+                    "type": "text",
+                    "text": json.dumps(
+                        {
+                            "services": [
+                                {"name": "Instalar câmera", "menu_path": ["Catálogo", "Câmeras", "Instalar câmera"]},
+                                {"name": "Reparar câmera", "menu_path": ["Catálogo", "Câmeras", "Reparar câmera"]},
+                            ]
+                        }
+                    ),
+                }
+            ]
 
     async def load_catalog_tool(session):
         return [CatalogTool()]
@@ -128,9 +152,9 @@ def test_chat_lists_catalog_without_model(monkeypatch):
     monkeypatch.setattr(agent, "load_mcp_tools", load_catalog_tool)
     monkeypatch.setattr(agent, "create_agent", lambda **kwargs: pytest.fail("Listagem não deve chamar o modelo"))
 
-    result = asyncio.run(agent.chat_node({"messages": [HumanMessage(content="Mostre os serviços")]}))
+    result = asyncio.run(agent.chat_node({"messages": [HumanMessage(content=question)]}))
 
-    assert result["response"].count("\n- ") == 2
+    assert "\n1. Instalar câmera\n2. Reparar câmera" in result["response"]
     assert "Instalar câmera" in result["response"]
     assert "Reparar câmera" in result["response"]
 

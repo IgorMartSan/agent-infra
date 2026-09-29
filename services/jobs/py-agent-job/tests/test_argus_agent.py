@@ -34,12 +34,7 @@ def test_argus_graph_invokes_sql_agent(monkeypatch):
 
 
 def test_argus_thread_is_stable_and_isolated():
-    payload = {
-        "application_id": "app",
-        "user_id": "user-1",
-        "chat_id": "chat-1",
-        "agent_id": "argus-agent",
-    }
+    payload = {"application_id": "app", "user_id": "user-1", "chat_id": "chat-1", "agent_id": "argus-agent"}
 
     assert _thread_id_for(payload) == _thread_id_for(payload)
     assert _thread_id_for(payload) != _thread_id_for({**payload, "user_id": "user-2"})

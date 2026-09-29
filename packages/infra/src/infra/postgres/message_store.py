@@ -28,24 +28,16 @@ class ChatBatch(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     chat_id: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(
-        String(32), default=BatchStatus.COLLECTING.value, index=True
-    )
+    status: Mapped[str] = mapped_column(String(32), default=BatchStatus.COLLECTING.value, index=True)
     messages: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
-    batch_metadata: Mapped[dict[str, Any] | None] = mapped_column(
-        "metadata", JSONB, nullable=True
-    )
+    batch_metadata: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     final_response: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_message_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
     attempts: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 @dataclass(slots=True)
@@ -210,11 +202,7 @@ class ChatBatchRepository:
             batch.attempts += 1
             batch.updated_at = now
             batch.last_message_at = now
-            batch.status = (
-                BatchStatus.ERROR.value
-                if batch.attempts >= max_attempts
-                else BatchStatus.COLLECTING.value
-            )
+            batch.status = BatchStatus.ERROR.value if batch.attempts >= max_attempts else BatchStatus.COLLECTING.value
             session.commit()
             return batch.status
 

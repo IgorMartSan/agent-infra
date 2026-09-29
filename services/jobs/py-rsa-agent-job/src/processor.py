@@ -39,9 +39,7 @@ def process_agent_message(payload: Mapping[str, Any]) -> dict[str, Any]:
             )
         )
     except Exception as error:
-        raise AgentProcessingError(
-            f"O agente RSA não conseguiu processar a mensagem: {error}"
-        ) from error
+        raise AgentProcessingError(f"O agente RSA não conseguiu processar a mensagem: {error}") from error
 
     response = result.get("response")
     if not isinstance(response, str) or not response.strip():

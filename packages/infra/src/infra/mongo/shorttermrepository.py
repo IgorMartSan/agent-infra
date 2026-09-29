@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, List, Dict
+from typing import Any
 
 from pymongo.collection import Collection
 
@@ -31,7 +31,7 @@ class ShortTermRepository:
         user_id: str,
         message: str,
         role: str,  # "user" | "assistant"
-        metadata: Dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         try:
             now = datetime.now(timezone.utc)
@@ -90,13 +90,9 @@ class ShortTermRepository:
         self,
         client_id: str,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         try:
-            cursor = (
-                self.collection.find({"client_id": client_id})
-                .sort("created_at", -1)
-                .limit(limit)
-            )
+            cursor = self.collection.find({"client_id": client_id}).sort("created_at", -1).limit(limit)
 
             # 🔥 formato ideal pra LLM
             return [
@@ -124,13 +120,9 @@ class ShortTermRepository:
         self,
         client_id: str,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         try:
-            return list(
-                self.collection.find({"client_id": client_id})
-                .sort("created_at", -1)
-                .limit(limit)
-            )
+            return list(self.collection.find({"client_id": client_id}).sort("created_at", -1).limit(limit))
         except Exception:
             logger.exception("Erro ao buscar mensagens raw")
             raise

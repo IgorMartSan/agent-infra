@@ -79,7 +79,9 @@ def test_rsa_summarizes_old_messages_and_keeps_last_exchange(monkeypatch):
     assert "Resumo das perguntas anteriores" not in seen_prompts[4]
     assert summary_inputs[0][1:5] == ["pergunta 1", "resposta 1", "pergunta 2", "resposta 2"]
 
-    thread_id = _thread_id_for({"application_id": "app", "user_id": "user", "chat_id": chat_id, "agent_id": "rsa-agent"})
+    thread_id = _thread_id_for(
+        {"application_id": "app", "user_id": "user", "chat_id": chat_id, "agent_id": "rsa-agent"}
+    )
     state = graph.get_state({"configurable": {"thread_id": thread_id}})
     assert state.values["summary"] == "Resumo das perguntas anteriores"
     assert [message.content for message in state.values["messages"]] == [

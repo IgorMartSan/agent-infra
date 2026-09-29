@@ -1,27 +1,25 @@
-from typing import TypedDict
-
 from langgraph.graph import END, START, StateGraph
 
+from entity.message import AgentMessage
 
-class AgentState(TypedDict):
-    message: str
-    response: str
-
-
-SYSTEM_PROMPT = """Eu sou o Simple Agent.
-
-Sou um agente simples criado para testar o funcionamento do LangGraph.
-Minha função atual é receber uma mensagem do usuário e retornar essa mesma
-mensagem informando que ela foi recebida."""
+from .nodes import receive_message
+from .state import AgentState
 
 
-def receive_message(state: AgentState) -> dict[str, str]:
-    return {"response": f"{SYSTEM_PROMPT}\n\nEu recebi a mensagem: {state['message']}"}
+def build_graph():
+    builder = StateGraph(AgentState)
+    builder.add_node("receive_message", receive_message)
+    builder.add_edge(START, "receive_message")
+    builder.add_edge("receive_message", END)
+    return builder.compile()
 
 
-builder = StateGraph(AgentState)
-builder.add_node("receive_message", receive_message)
-builder.add_edge(START, "receive_message")
-builder.add_edge("receive_message", END)
+async def invoke(graph, message: AgentMessage, thread_id: str) -> str:
+    result = await graph.ainvoke(
+        {"message": message.message, "response": ""},
+        config={"configurable": {"thread_id": thread_id}},
+    )
+    return result["response"]
 
-graph = builder.compile()
+
+graph = build_graph()

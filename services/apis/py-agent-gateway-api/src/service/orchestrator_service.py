@@ -1,5 +1,4 @@
 class OrchestratorService:
-
     def __init__(self, agents):
         self._agents = agents
 
