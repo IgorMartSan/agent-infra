@@ -7,7 +7,7 @@ import time
 from config.logger import setup_logger
 from dotenv import load_dotenv
 
-from agents.catalog import AgentProcessingError, get_agent
+from agents.langchain_agents.agent_runtime import AgentProcessingError, get_agent
 from infra.rabbitmq.connection import RabbitMQConnection
 from infra.redis.agent_registry import AgentRegistry
 from infra.redis.connection import RedisConnection
