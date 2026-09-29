@@ -1,31 +1,22 @@
 """Interface ?nica entre o worker e os grafos dos agentes."""
 
 import asyncio
-import hashlib
-import json
 import os
 from contextlib import AsyncExitStack, contextmanager
 from importlib import import_module
 from uuid import uuid4
 
+from langfuse.langchain import CallbackHandler
 from langgraph.checkpoint.postgres.shallow import AsyncShallowPostgresSaver
 
 from agents.catalog import AgentProcessingError
 from entity.message import AgentMessage
-
 
 AGENTS = {
     "simple-agent": "agents.langchain_agents.simple_agent.graph",
     "rsa-agent": "agents.langchain_agents.rsa_flow.graph",
     "argus-agent": "agents.langchain_agents.argus_agent.graph.graph",
 }
-
-
-def _thread_id_for(message: AgentMessage) -> str:
-    if not message.chat_id:
-        return uuid4().hex
-    identity = [message.application_id, message.user_id or "", message.chat_id, message.agent_id]
-    return hashlib.sha256(json.dumps(identity, ensure_ascii=False).encode()).hexdigest()
 
 
 class AgentRuntime:
@@ -50,14 +41,18 @@ class AgentRuntime:
 
     def invoke(self, message: AgentMessage) -> str:
         try:
-            thread_id = _thread_id_for(message)
+            conversation_id = message.chat_id or uuid4().hex
+            langfuse_handler = CallbackHandler()
+            config = {
+                "callbacks": [langfuse_handler],
+                "configurable": {"thread_id": conversation_id},
+                "metadata": {"langfuse_session_id": conversation_id, "langfuse_tags": [self.agent_id]},
+            }
             if hasattr(self.module, "invoke"):
-                response = self.runner.run(self.module.invoke(self.graph, message, thread_id))
+                response = self.runner.run(self.module.invoke(self.graph, message, config))
             else:
-                state = {"message": message.message, "response": "", "thread_id": thread_id}
-                result = self.runner.run(
-                    self.graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
-                )
+                state = {"message": message.message, "response": "", "thread_id": conversation_id}
+                result = self.runner.run(self.graph.ainvoke(state, config=config))
                 response = result.get("response")
             if not isinstance(response, str) or not response.strip():
                 raise ValueError("O agente retornou uma resposta vazia.")

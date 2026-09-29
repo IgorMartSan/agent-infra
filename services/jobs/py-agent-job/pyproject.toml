@@ -19,6 +19,7 @@ dependencies = [
     'infra',
     'config',
     'openpyxl>=3.1.5',
+    "langfuse>=4,<5",
 ]
 
 [tool.uv.sources]

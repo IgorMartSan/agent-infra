@@ -42,6 +42,25 @@ O mesmo Dockerfile atende os serviços `agent-simple`, `agent-rsa` e `agent-argu
 
 Variáveis comuns usadas pelo worker: `AGENT_ID`, `RABBITMQ_HOST/USER/PASSWORD`, `REDIS_HOST` e, se necessário, `RABBITMQ_PORT`, `REDIS_PORT` e `REDIS_PASSWORD`. O RabbitMQ usa três tentativas por conexão, com intervalo de um segundo; quando o consumo cai, o worker tenta reconectar após três segundos. O Redis usa o banco 0 e o canal `chat:response`. Um agente novo requer um grafo no catálogo e um serviço Compose com seu ID. As variáveis de modelo, MCP, banco e memória continuam próprias de cada agente.
 
+## Rastreamento com Langfuse
+
+Os três agentes do worker (`agent-simple`, `agent-rsa` e `agent-argus`) criam `CallbackHandler` diretamente em `src/agents/langchain_agents/agent_runtime.py` e o passam ao grafo pelo `config`. O `conversation_id` recebido do gateway é usado sem alteração tanto em `configurable.thread_id` quanto em `metadata.langfuse_session_id`, junto com a tag do agente. Se a mensagem não trouxer um ID de conversa, o agente gera um para aquela execução. Sem chaves de API, o cliente Langfuse não envia rastreamentos.
+
+Para usar a stack local existente em `composes/compose-langfuse/compose.langfuse.yaml`, copie `composes/compose-langfuse/.env.example` para `.env` na mesma pasta e substitua todos os valores `CHANGE_ME`. Mantenha `DATABASE_URL` consistente com `POSTGRES_PASSWORD` e as três chaves S3 consistentes com `MINIO_ROOT_PASSWORD`. A URL pública do Langfuse é `http://localhost:3002`. Crie um projeto na interface ou configure as variáveis `LANGFUSE_INIT_*` no arquivo `.env` para criar o projeto e as chaves na inicialização.
+
+~~~powershell
+docker-compose --env-file composes/compose-langfuse/.env -f composes/compose-langfuse/compose.langfuse.yaml up -d
+~~~
+
+Em `composes/compose-langfuse/.env.agent`, configure as chaves abaixo. Esse arquivo é ignorado pelo Git e carregado pelos três workers no Docker Compose. Para Langfuse Cloud, substitua `LANGFUSE_BASE_URL` no Compose pela URL da região do seu projeto. `host.docker.internal` permite que os workers Docker alcancem a stack local pela porta publicada no host.
+
+~~~dotenv
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+~~~
+
+Depois, recrie os workers com `docker-compose up -d --build --force-recreate agent-simple agent-rsa agent-argus`. Envie uma mensagem no chat e confira a execução em Tracing no projeto Langfuse. O conteúdo das mensagens e das respostas das ferramentas passa a constar nos rastreamentos; configure a retenção e o acesso ao projeto conforme seus dados.
+
 ## Desenvolvimento
 
 Python 3.11 ou superior; o Dockerfile usa Python 3.12.

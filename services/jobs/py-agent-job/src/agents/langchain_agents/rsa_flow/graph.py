@@ -42,10 +42,10 @@ def build_graph(checkpointer=None):
     return builder.compile(checkpointer=checkpointer)
 
 
-async def invoke(graph, message: AgentMessage, thread_id: str) -> str:
+async def invoke(graph, message: AgentMessage, config: dict) -> str:
     state: AgentState = {"messages": [HumanMessage(content=message.message)]}
 
-    result = await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
+    result = await graph.ainvoke(state, config=config)
 
     response = result.get("response")
 
