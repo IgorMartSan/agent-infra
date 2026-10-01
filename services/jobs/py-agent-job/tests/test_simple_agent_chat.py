@@ -106,6 +106,7 @@ def test_worker_publishes_agent_error_before_ack(monkeypatch):
 
     worker.main()
 
+    agent.invoke.assert_called_once_with(message)
     publisher.publish.assert_called_once_with(message, str(error), failed=True)
     conversation_lock.release.assert_called_once_with("app", "chat", "simple-agent")
     rabbitmq.ack.assert_called_once()

@@ -24,7 +24,7 @@ def get_redis_client():
 
 
 def get_agent_repository(redis_client: Annotated[object, Depends(get_redis_client)]):
-    return AgentRepository(redis_client, os.getenv('AGENT_ONLINE_KEY_PREFIX', 'agent:online:'))
+    return AgentRepository(redis_client, os.getenv("AGENT_ONLINE_KEY_PREFIX", "agent:online:"))
 
 
 def get_message_service(
@@ -39,12 +39,12 @@ def get_message_service(
             producer=RabbitMQProducer(rabbitmq),
             agents=agents,
             conversation_lock=ConversationLock(
-                redis_client, ttl_seconds=int(os.getenv('CONVERSATION_LOCK_TTL_SECONDS', '300'))
+                redis_client, ttl_seconds=int(os.getenv("CONVERSATION_LOCK_TTL_SECONDS", "300"))
             ),
             queue_threshold=QueueThreshold(
-                QueueRepository(rabbitmq).message_count, max_messages=int(os.getenv('QUEUE_MAX_MESSAGES', '100'))
+                QueueRepository(rabbitmq).message_count, max_messages=int(os.getenv("QUEUE_MAX_MESSAGES", "100"))
             ),
-            exchange=os.getenv('RABBITMQ_EXCHANGE', 'agent.requests'),
+            exchange=os.getenv("RABBITMQ_EXCHANGE", "agent.requests"),
         )
     finally:
         rabbitmq.close()

@@ -29,10 +29,14 @@ def test_catalog_json_from_model_is_also_formatted():
 
 
 def test_category_listing_uses_catalog_without_model():
-    catalog = json.dumps({"services": [
-        {"name": "Analytics", "menu_path": ["Catálogo", "PIMS", "Analytics"]},
-        {"name": "Instalar câmera", "menu_path": ["Catálogo", "Infraestrutura", "Instalar câmera"]},
-    ]})
+    catalog = json.dumps(
+        {
+            "services": [
+                {"name": "Analytics", "menu_path": ["Catálogo", "PIMS", "Analytics"]},
+                {"name": "Instalar câmera", "menu_path": ["Catálogo", "Infraestrutura", "Instalar câmera"]},
+            ]
+        }
+    )
 
     assert _is_catalog_listing("Quais serviços existem no PIMS?")
     response = _catalog_listing(catalog, "Quais serviços existem no PIMS?")

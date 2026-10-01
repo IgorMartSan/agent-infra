@@ -11,6 +11,6 @@
 | RabbitMQ AMQP / painel | 5673 / 15673 |
 | PostgreSQL `postgres-vector` / pgAdmin | 5433 / 5434 |
 
-Dentro da rede Compose, os serviços usam `redis:6379`, `rabbitmq:5672` e os nomes internos dos containers. O `agent-rsa` alcança um PostgreSQL do host por `host.docker.internal`. `agent-argus` usa os parâmetros SQL carregados de `services/jobs/py-sql-agent-job/.env`.
+Dentro da rede Compose, os serviços usam `redis:6379`, `rabbitmq:5672` e os nomes internos dos containers. O `agent-rsa` alcança um PostgreSQL do host por `host.docker.internal`. `agent-argus` usa os parâmetros SQL carregados de `services/jobs/py-agent-job/.env.argus`.
 
 `compose.qdrant.yaml`, `compose.n8n.yaml`, `compose.phoenix.yaml`, `compose.llms.yaml` e `compose.infra.yaml` são opcionais. As pastas `compose-agent/` e `compose-langfuse/` também contêm stacks próprias. Revise portas, volumes e credenciais antes de iniciá-las de forma independente.

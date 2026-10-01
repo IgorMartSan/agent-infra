@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from dependencies import get_agent_repository, get_message_service
 from main import app

@@ -9,4 +9,4 @@ class QueueThreshold:
 
     def check(self, queue_name):
         if self._message_count(queue_name) >= self._max_messages:
-            raise QueueOverloaded('A fila de processamento está cheia no momento. Tente novamente em alguns instantes.')
+            raise QueueOverloaded("A fila de processamento está cheia no momento. Tente novamente em alguns instantes.")

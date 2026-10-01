@@ -9,54 +9,36 @@ from routers.agents import router as agents_router
 from routers.message import router as messages_router
 
 load_dotenv()
-setup_logger(os.getenv('LOG_LEVEL', 'INFO'))
+setup_logger(os.getenv("LOG_LEVEL", "INFO"))
 
 
 app = FastAPI(
-    title='Agent API',
+    title="Agent API",
     description=(
-        'API responsável por receber mensagens de diferentes aplicações '
-        'e encaminhá-las para processamento por agentes de IA.'
+        "API responsável por receber mensagens de diferentes aplicações "
+        "e encaminhá-las para processamento por agentes de IA."
     ),
-    version='0.1.0',
-    docs_url='/docs',
-    redoc_url='/redoc',
-    openapi_url='/openapi.json',
-    swagger_ui_parameters={
-        'displayRequestDuration': True,
-        'docExpansion': 'list',
-        'filter': True,
-    },
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    swagger_ui_parameters={"displayRequestDuration": True, "docExpansion": "list", "filter": True},
 )
 
-app.include_router(
-    messages_router,
-    prefix='/api/v1/messages',
-    tags=['Messages'],
-)
+app.include_router(messages_router, prefix="/api/v1/messages", tags=["Messages"])
 
-app.include_router(
-    agents_router,
-    prefix='/api/v1/agents',
-    tags=['Agents'],
-)
+app.include_router(agents_router, prefix="/api/v1/agents", tags=["Agents"])
 
 
 @app.get(
-    '/',
-    summary='Verificar status da API',
-    description='Retorna uma resposta simples indicando que a Agent API está disponível.',
-    tags=['Health'],
+    "/",
+    summary="Verificar status da API",
+    description="Retorna uma resposta simples indicando que a Agent API está disponível.",
+    tags=["Health"],
 )
 def root() -> dict[str, str]:
-    return {
-        'message': 'Agent API is running',
-    }
+    return {"message": "Agent API is running"}
 
 
-if __name__ == '__main__':
-    uvicorn.run(
-        app,
-        host='0.0.0.0',
-        port=8000,
-    )
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -8,3 +8,10 @@ dependencies = [
     'fastmcp>=2.0.0',
     'python-dotenv>=1.0.0',
 ]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+skip-magic-trailing-comma = true

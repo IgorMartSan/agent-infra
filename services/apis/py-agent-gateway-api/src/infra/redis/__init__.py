@@ -1,3 +1,3 @@
 from infra.redis.connection import RedisConnection
 
-__all__ = ['RedisConnection']
+__all__ = ["RedisConnection"]

@@ -79,8 +79,6 @@ pnpm-debug.log*
 .env.production.local
 /services/jobs/py-agent-job/.env.argus
 /services/jobs/py-agent-job/.env.simple
-/composes/compose-langfuse/.env
-/composes/compose-langfuse/.env.agent
 
 
 # =========================

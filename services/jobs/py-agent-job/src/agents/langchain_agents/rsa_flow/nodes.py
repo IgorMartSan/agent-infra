@@ -69,16 +69,15 @@ def _catalog_listing(tool_result: object, question: str = "") -> str:
         char for char in unicodedata.normalize("NFKD", question.casefold()) if not unicodedata.combining(char)
     )
     categories = {
-        category
-        for service in services
-        for category in service.get("menu_path", [])[1:-1]
-        if len(category) >= 3
+        category for service in services for category in service.get("menu_path", [])[1:-1] if len(category) >= 3
     }
     selected = [
-        category for category in categories
+        category
+        for category in categories
         if "".join(
             char for char in unicodedata.normalize("NFKD", category.casefold()) if not unicodedata.combining(char)
-        ) in plain_question
+        )
+        in plain_question
     ]
     if selected:
         category = max(selected, key=len)

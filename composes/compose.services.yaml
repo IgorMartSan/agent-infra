@@ -10,7 +10,6 @@ x-agent-worker: &agent-worker
     RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     REDIS_HOST: redis
     REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-http://host.docker.internal:3002}
   depends_on:
     rabbitmq:
       condition: service_healthy
@@ -46,23 +45,6 @@ services:
     networks:
       - agent_platform_network
 
-  # Referência independente; habilitar apenas quando agent-simple estiver parado.
-  worker-agent:
-    profiles: ["legacy"]
-    build:
-      context: ..
-      dockerfile: services/jobs/py-simple-agent-job/Dockerfile
-    restart: unless-stopped
-    env_file:
-      - ../services/jobs/py-simple-agent-job/.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - agent_platform_network
-
   agent-rsa:
     <<: *agent-worker
     container_name: agent-rsa
@@ -75,21 +57,18 @@ services:
         condition: service_healthy
     env_file:
       - ../services/jobs/py-agent-job/.env.rsa
-      - ./compose-langfuse/.env.agent
 
   agent-simple:
     <<: *agent-worker
     container_name: agent-simple
     env_file:
       - ../services/jobs/py-agent-job/.env.simple
-      - ./compose-langfuse/.env.agent
 
   agent-argus:
     <<: *agent-worker
     container_name: agent-argus
     env_file:
       - ../services/jobs/py-agent-job/.env.argus
-      - ./compose-langfuse/.env.agent
 
   chatbot-next:
     build:

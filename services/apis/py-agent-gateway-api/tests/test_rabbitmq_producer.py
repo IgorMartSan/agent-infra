@@ -33,34 +33,22 @@ def test_publish_uses_durable_exchange_persistent_message_and_routing_key() -> N
     channel = FakeChannel()
     producer = RabbitMQProducer(FakeConnection(channel))
 
-    producer.publish(
-        exchange='agent.requests',
-        routing_key='agent.simple',
-        message={'message_id': 'message-1'},
-    )
+    producer.publish(exchange="agent.requests", routing_key="agent.simple", message={"message_id": "message-1"})
 
-    assert channel.declaration == {
-        'exchange': 'agent.requests',
-        'exchange_type': 'direct',
-        'durable': True,
-    }
-    assert channel.publication['exchange'] == 'agent.requests'
-    assert channel.publication['routing_key'] == 'agent.simple'
-    assert channel.publication['mandatory'] is True
-    assert json.loads(channel.publication['body']) == {'message_id': 'message-1'}
-    assert channel.publication['properties'].content_type == 'application/json'
-    assert channel.publication['properties'].delivery_mode == 2
+    assert channel.declaration == {"exchange": "agent.requests", "exchange_type": "direct", "durable": True}
+    assert channel.publication["exchange"] == "agent.requests"
+    assert channel.publication["routing_key"] == "agent.simple"
+    assert channel.publication["mandatory"] is True
+    assert json.loads(channel.publication["body"]) == {"message_id": "message-1"}
+    assert channel.publication["properties"].content_type == "application/json"
+    assert channel.publication["properties"].delivery_mode == 2
 
 
 def test_publish_fails_when_rabbitmq_does_not_confirm() -> None:
     producer = RabbitMQProducer(FakeConnection(FakeChannel(confirmed=False)))
 
-    with pytest.raises(RuntimeError, match='não confirmou'):
-        producer.publish(
-            exchange='agent.requests',
-            routing_key='agent.simple',
-            message={'message_id': 'message-1'},
-        )
+    with pytest.raises(RuntimeError, match="não confirmou"):
+        producer.publish(exchange="agent.requests", routing_key="agent.simple", message={"message_id": "message-1"})
 
 
 def test_publish_reconnects_once_after_stale_connection() -> None:
@@ -73,7 +61,7 @@ def test_publish_reconnects_once_after_stale_connection() -> None:
         def channel(self):
             self.attempts += 1
             if self.attempts == 1:
-                raise pika.exceptions.StreamLostError('stale connection')
+                raise pika.exceptions.StreamLostError("stale connection")
             return healthy_channel
 
         @channel.setter
@@ -83,11 +71,7 @@ def test_publish_reconnects_once_after_stale_connection() -> None:
     connection = RecoveringConnection(healthy_channel)
     producer = RabbitMQProducer(connection)
 
-    producer.publish(
-        exchange='agent.requests',
-        routing_key='agent.gemma4',
-        message={'message_id': 'message-1'},
-    )
+    producer.publish(exchange="agent.requests", routing_key="agent.gemma4", message={"message_id": "message-1"})
 
     assert connection.close_calls == 1
-    assert healthy_channel.publication['routing_key'] == 'agent.gemma4'
+    assert healthy_channel.publication["routing_key"] == "agent.gemma4"

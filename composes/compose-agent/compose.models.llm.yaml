@@ -32,51 +32,73 @@ services:
 
 
 # Equivalente mais proximo de 2B na familia Qwen3
-  qwen-vllm-2b:
-    image: vllm/vllm-openai:latest
-    container_name: qwen3_1_7b_vllm
-    ports:
-      - "50011:8000"
-    volumes:
-      - ${PATH_VOLUMES}/models/qwen3_1_7b_vllm/hf-cache:/root/.cache/huggingface
-    environment:
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    command: >
-      Qwen/Qwen3-1.7B
-      --host 0.0.0.0
-      --port 8000
-      --dtype auto
-      --gpu-memory-utilization 0.90
-      --max-model-len 8192
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    networks:
-      - ai_shop_assistant_network
+  # qwen-vllm-2b:
+  #   image: vllm/vllm-openai:latest
+  #   container_name: qwen3_1_7b_vllm
+  #   ports:
+  #     - "50011:8000"
+  #   volumes:
+  #     - ${PATH_VOLUMES}/models/qwen3_1_7b_vllm/hf-cache:/root/.cache/huggingface
+  #   environment:
+  #     - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #     - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+  #   command: >
+  #     Qwen/Qwen3-1.7B
+  #     --host 0.0.0.0
+  #     --port 8000
+  #     --dtype auto
+  #     --gpu-memory-utilization 0.90
+  #     --max-model-len 8192
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   networks:
+  #     - ai_shop_assistant_network
 
 
 
-  bge_m3:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    # image: ghcr.io/huggingface/text-embeddings-inference:1.9
-    container_name: bge_m3
-    ports:
-      - "8080:80"
-    volumes:
-      - ../volumes/bge_m3:/data
-    command:
-      - --model-id
-      - BAAI/bge-m3
-    gpus: all
-    restart: unless-stopped
-    networks:
-      - ai_shop_assistant_network
+  # bge_m3:
+  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+  #   # image: ghcr.io/huggingface/text-embeddings-inference:1.9
+  #   container_name: bge_m3
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - ../volumes/bge_m3:/data
+  #   command:
+  #     - --model-id
+  #     - BAAI/bge-m3
+  #   gpus: all
+  #   restart: unless-stopped
+  #   networks:
+  #     - ai_shop_assistant_network
+
+
+
+
+  # laya:
+  #   image: ghcr.io/cloudn1ne/system1:latest
+
+  #   ports:
+  #     - "8003:8000"
+
+  #   environment:
+  #     LAYA_DEVICE: cuda
+  #     LAYA_PRELOAD: "1"
+
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities:
+  #               - gpu
 
 
 
