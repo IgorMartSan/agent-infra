@@ -1,5 +1,12 @@
 # MCP de teste
 
+## Arquitetura do Serviço
+
+A arquitetura e estrutura de ferramentas, recursos e prompts deste servidor estão documentadas em:
+
+- 📄 [ARCHITECTURE.md](ARCHITECTURE.md)
+
+
 Servidor FastMCP de demonstração, sem dependência de banco. `src/main.py` registra os módulos e inicia stdio; `src/server.py` cria o servidor. `src/tools/test_tool.py` fornece `hello`, `src/resources/test_resource.py` expõe recursos estáticos de exemplo e `src/prompts/test_prompt.py` fornece templates de revisão e resumo.
 
 ~~~powershell

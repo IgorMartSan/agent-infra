@@ -60,8 +60,17 @@ O `agent-rsa` usa `host.docker.internal` para alcançar o PostgreSQL instalado n
 
 O `rsa-agent` mantém mensagens recentes e um resumo da parte antiga da conversa no estado do LangGraph. Quando o histórico passa de 20 mensagens (`RSA_MEMORY_MAX_MESSAGES`), o nó `summarize` atualiza o resumo e preserva a última troca. Um checkpointer PostgreSQL mantém apenas o estado mais recente de cada conversa, inclusive após o reinício do worker. Esse armazenamento usa o serviço `postgres-vector`, separado do banco RSA consultado pelo MCP.
 
+## Arquitetura Geral do Sistema
+
+A especificação completa das diretrizes arquiteturais, padrões de pastas para cada tipo de serviço e regras de validação para desenvolvimento estão documentadas em:
+
+- 📄 [ARCHITECTURE.md](ARCHITECTURE.md)
+
+Consulte o documento acima antes de criar ou modificar qualquer serviço, agente, API ou pacote.
+
 ## Serviços e pacotes
 
+- [Documento de Arquitetura Geral](ARCHITECTURE.md)
 - [Gateway](services/apis/py-agent-gateway-api/README.md)
 - [Chat](services/frontend/chatbot-next/README.md)
 - [Worker dos agentes](services/jobs/py-agent-job/README.md)

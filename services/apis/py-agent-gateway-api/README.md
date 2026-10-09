@@ -19,6 +19,13 @@ O gateway responde `202` com `message_id` e `status: ACCEPTED` após a confirma�
 
 O roteamento segue `agent_id`: `argus-agent` usa `agent.argus` e a fila `agent.argus.requests`. O worker cria o binding da sua fila. O gateway verifica a profundidade da fila e segura um lock Redis por aplicação, chat e agente até o worker publicar a resposta.
 
+## Arquitetura do Serviço
+
+A arquitetura detalhada de pastas, contratos e responsabilidades das camadas (`routers`, `schemas`, `service`, `infra`, `dependencies`) está documentada em:
+
+- 📄 [ARCHITECTURE.md](ARCHITECTURE.md)
+
+
 ## Código e configuração
 
 `src/routers/` define os endpoints, `src/schemas/` os contratos, `src/service/` coordena a entrada, `src/infra/` contém os clientes Redis/RabbitMQ e `src/dependencies.py` cria e fecha os clientes por requisição. A conexão RabbitMQ por requisição evita reutilizar canais ociosos encerrados pelo broker.

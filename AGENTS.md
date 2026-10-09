@@ -1,31 +1,101 @@
-## AGENTS.md
+# [AGENTS.md](http://AGENTS.md)
 
-### Setup
-- **Env**: `npm install -g @opencode/cli` (use `--force` if version conflicts)
-- **Dev**: `npm run dev` (logs to `/tmp/agent.log`)
-- **Fmt**: `npm run format` (ignores `node_modules`)
-- **Test**: `npm run test -- --testPathPattern "integration"` (requires Docker)
+Este arquivo define qual fluxo deve ser utilizado para cada solicitação.
 
-### Commands
-- **Lint**: `npx eslint . --ext .ts,.tsx` (fixes: `--fix`)
-- **Typecheck**: `npx tsc --noEmit` (fails fast: `--noEmit`)
-- **Build**: `npm run build` (outputs to `dist/agent`)
-- **Deploy**: `npm run deploy` (requires AWS credentials in `~/.aws/credentials`)
+Existem somente dois tipos de tarefa:
 
-### Architecture
-- **Monorepo**: `packages/agent` (core) | `packages/redis` (backend) | `packages/web` (frontend)
-- **Entry Points**: `index.ts` (main) | `api.js` (serverless) | `ui/index.html` (SPA)
-- **Codegen**: `tools/generate.ts` (runs on `npm install`)
+```
+DEVELOPMENT
+REVIEW
+```
 
-### Gotchas
-- **Redis**: Always use `localhost:6379` in dev (prod uses cloud Redis)
-- **Snapshots**: Jest uses `__snapshots__` directory (delete to reset)
-- **CI**: `CI=true npm test` (skips Docker for faster runs)
-- **Lockfile**: `package-lock.json` is immutable (manual edits may break builds)
+Antes de executar qualquer atividade, classifique a solicitação em um desses dois tipos.
 
-### References
-- [README.md](README.md) for full setup
-- [.cursor/rules/](.cursor/rules/) for code formatting
-- [.github/workflows](.github/workflows) for CI config
+---
 
-Last updated: `date +"\%Y-\%m-\%d"`
+# DEVELOPMENT
+
+Utilize `DEVELOPMENT` quando o pedido envolver:
+
+- criar funcionalidade;
+- modificar funcionalidade;
+- corrigir bug;
+- refatorar código;
+- criar endpoint;
+- modificar endpoint;
+- criar ou alterar interface;
+- alterar banco de dados;
+- alterar infraestrutura;
+- criar ou modificar testes;
+- implementar integração;
+- alterar comportamento existente.
+
+Depois de classificar como `DEVELOPMENT`, siga obrigatoriamente:
+
+```
+skills/development.md
+```
+
+---
+
+# REVIEW
+
+Utilize `REVIEW` somente quando o pedido for explicitamente para revisar alterações pendentes.
+
+Exemplos:
+
+- revisar os reviews;
+- validar os reviews;
+- revisar `.review/`;
+- verificar alterações pendentes;
+- revisar implementações realizadas;
+- processar arquivos de revisão.
+
+Depois de classificar como `REVIEW`, siga obrigatoriamente:
+
+```
+skills/review.md
+```
+
+---
+
+# Regra de classificação
+
+Se o usuário estiver pedindo uma alteração no sistema:
+
+```
+DEVELOPMENT
+```
+
+Se o usuário estiver pedindo para revisar alterações já realizadas:
+
+```
+REVIEW
+```
+
+Não misture os dois fluxos.
+
+Uma tarefa `DEVELOPMENT` deve criar um registro em `.review/`.
+
+Uma tarefa `REVIEW` deve processar os registros existentes em `.review/`.
+
+---
+
+# Fluxo
+
+```
+PEDIDO DO USUÁRIO
+       ↓
+CLASSIFICAR
+       ↓
+ ┌───────────────┐
+ │               │
+ ↓               ↓
+DEVELOPMENT     REVIEW
+ │               │
+ ↓               ↓
+skills/         skills/
+development.md  review.md
+```
+
+Após a classificação, seguir o arquivo correspondente até a conclusão.

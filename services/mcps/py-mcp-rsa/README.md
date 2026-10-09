@@ -1,6 +1,13 @@
 # MCP RSA
 
-Servidor FastMCP usado pelo `rsa-agent` do worker unificado. `src/server.py` cria o servidor, `src/tools/` contém as tools e `src/infra/postgresql/connection.py` abre uma sessão PostgreSQL assíncrona. O worker inicia o MCP por stdio usando `MCP_SERVER_PATH` e `MCP_PYTHON_EXECUTABLE` definidos no Dockerfile.
+Servidor FastMCP usado pelo `rsa-agent` para consulta de serviços ativos, formulários e demandas com sanitização de dados sensíveis.
+
+## Arquitetura do Servidor MCP
+
+A arquitetura detalhada de pastas, contratos e diretrizes de segurança deste servidor estão documentadas em:
+
+- 📄 [ARCHITECTURE.md](ARCHITECTURE.md)
+
 
 ## Banco
 

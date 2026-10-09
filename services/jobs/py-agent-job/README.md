@@ -26,15 +26,18 @@ flowchart LR
 
 Se o agente falhar, o worker registra a exceção e publica `message.failed` com os mesmos IDs. O gateway bloqueia a conversa enquanto ela é processada; o worker libera esse bloqueio após publicar a resposta, permitindo a próxima mensagem.
 
-## Estrutura
+## Arquitetura do Worker e Padrão de Agentes
 
-- `src/main.py` escolhe a fila, percorre `rabbitmq.consume(queue)`, chama o agente, publica o resultado, confirma a mensagem e mantém o heartbeat e a reconexão.
-- `src/entity/message.py` define `AgentMessage` com os IDs, o texto e os campos opcionais da conversa.
-- `src/agents/catalog.py` escolhe o grafo por ID, calcula a identidade da conversa e entrega ao `main.py` um agente com `invoke(message)`. Ele também mantém o loop assíncrono e o checkpoint RSA abertos.
-- `src/agents/langchain_agents/simple_agent/` repete a entrada.
-- `src/agents/langchain_agents/rsa_agent.py` contém estado, modelo, MCP, nó de conversa, nó de resumo e grafo do RSA. O agente usa `list_services_with_done_examples` para listar serviços ativos ou recomendar um serviço para uma necessidade, mostrando o caminho no menu quando disponível e sem expor IDs. Pedidos gerais de listagem chamam a tool diretamente e mostram todos os nomes agrupados pelo caminho do menu; o catálogo injeta o checkpointer PostgreSQL.
-- `src/agents/langchain_agents/argus_agent/` consulta PostgreSQL em modo somente leitura e mantém memória limitada por conversa.
-- `src/infra/rabbitmq/connection.py` recebe a fila e devolve `AgentMessage`; `ack()` confirma a entrega após o Pub/Sub. `src/infra/redis/` publica a resposta e renova `agent:online:{agent_id}` a cada 10 segundos, com validade de 30 segundos.
+A arquitetura completa do worker, a estrutura de pastas modular de cada agente (`model.py`, `graph/`, `prompts/`, `tools/`) e as diretrizes de ciclo de vida estão documentadas em:
+
+- 📄 [ARCHITECTURE.md](ARCHITECTURE.md)
+
+### Resumo do Funcionamento:
+1. **Entrada Única:** O `main.py` consome do RabbitMQ e repassa uma `AgentMessage` para `agent.invoke(message)`.
+2. **Isolamento de Memória:** O catálogo deriva um `thread_id` a partir do hash determinístico de `(application_id, user_id, chat_id, agent_id)`.
+3. **Padrão de Resposta:** O grafo deve popular o campo `response` no seu estado com texto não-vazio.
+4. **Tratamento de Exceções:** Em caso de erro durante `agent.invoke`, o worker captura a exceção, publica `message.failed` no Redis Pub/Sub, libera o lock da conversa e confirma a mensagem no RabbitMQ.
+5. **Heartbeat:** Uma thread em background renova periodicamente a chave `agent:online:{agent_id}` no Redis a cada 10s.
 
 ## Configuração no Compose
 
