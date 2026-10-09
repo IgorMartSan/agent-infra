@@ -64,6 +64,36 @@ Depois, recrie o worker com `docker-compose up -d --build --force-recreate agent
 
 ## Desenvolvimento
 
+O fluxo ativo do RSA fica em `src/agents/langchain_agents/rsa_flow`. Antes da execução,
+o nó `planner` carrega nomes, descrições e schemas reais das ferramentas MCP, sem
+executá-las. Sua saída estruturada (`PlannerDecision`) contém `decision`,
+`normalized_question`, `selected_tools` e `steps`. Ele corrige a escrita apenas no
+contexto interno, preservando o texto original no histórico, e indica três intenções
+para o agente ReAct. Todas seguem pela mesma ligação `planner -> chat -> validate_response`:
+
+- `tools`: segue para `chat`, que executa somente as ferramentas selecionadas;
+- `respond`: o ReAct responde pelo contexto e inventário, sem vincular ferramentas;
+- `finish`: o ReAct explica a limitação quando a capacidade solicitada não existe.
+
+Os nomes selecionados são conferidos contra o inventário no planejamento e antes
+da execução. Mesmo um erro no planejamento é encaminhado ao ReAct, sem ferramentas,
+para explicar a falha sem alegar que a capacidade está ausente. O planner não publica
+respostas nem tem ligação direta com o final do fluxo.
+
+Após `chat`, o nó `validate_response` verifica se a resposta conclui o
+pedido usando o histórico, o inventário MCP e os resultados de ferramentas do turno
+atual. Respostas incompletas voltam ao `planner` com uma orientação interna, no máximo
+duas vezes adicionais, permitindo reconsiderar a decisão com as evidências obtidas. Somente
+a resposta aprovada ou uma mensagem de limitação entra no histórico e segue para o
+gateway; o resumo da memória ocorre depois dessa validação. Cada novo turno reinicia
+o contador e as evidências internas.
+
+O planejamento e a validação semântica usam o mesmo modelo configurado no worker,
+cada um com uma chamada de saída estruturada por tentativa. A listagem do catálogo
+também passa pelo ReAct e pela validação. Se a validação
+falhar, o fluxo informa que não conseguiu verificar o resultado, sem publicar a
+resposta candidata.
+
 Python 3.11 ou superior; o Dockerfile usa Python 3.12.
 
 ~~~powershell

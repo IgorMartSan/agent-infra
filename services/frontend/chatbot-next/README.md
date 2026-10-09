@@ -13,3 +13,19 @@ npm run lint
 ~~~
 
 `npm run dev` abre a interface na porta 3000; o Compose publica a versão de produção em http://localhost:3001. A API precisa estar na porta 8000 e o Redis acessível pela URL configurada. O stream envia apenas eventos futuros do canal da conversa; mantenha a conexão aberta antes de enviar uma mensagem.
+
+Para acessar de outro dispositivo, use `http://<IP-da-maquina-host>:3001` com o Compose, ou `http://<IP-da-maquina-host>:3000` com `npm run dev`. O frontend escuta em `0.0.0.0`, sem depender de um IP fixo. As chamadas do navegador usam `/api` no mesmo host; não é necessário trocar `CHAT_API_URL` pelo IP da máquina.
+
+No Windows, libere a porta do Compose em um PowerShell como administrador:
+
+~~~powershell
+New-NetFirewallRule -Name "ChatbotNext-TCP-3001" -DisplayName "Chatbot Next TCP 3001" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3001 -Profile Any -RemoteAddress Any
+~~~
+
+Se o Docker/WSL publicar a porta somente no loopback do Windows, configure o encaminhamento abaixo no PowerShell como administrador. Encaminhamentos antigos da porta 3001 presos a um IP específico devem ser removidos antes (`netsh interface portproxy show all` para consultar). Não é necessário esse encaminhamento quando o Docker já escuta no IP da rede.
+
+~~~powershell
+netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=3001 connectaddress=127.0.0.1 connectport=3001
+~~~
+
+O dispositivo precisa ter uma rota até o IP do host. Para acesso pela internet, também é necessário configurar o roteador ou firewall da infraestrutura.
